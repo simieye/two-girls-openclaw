@@ -77,6 +77,138 @@ let customAgents = loadCustomData('custom_agents.json', []);
 // agentId counter
 let agentIdCounter = customAgents.length > 0 ? Math.max(...customAgents.map(a => parseInt(a._counter || 0))) + 1 : 1;
 
+// ========== 活动发布模块 ==========
+const QRCode = require('qrcode');
+
+// 活动类型定义
+const EVENT_TYPES = [
+  { id: 'beer_festival', name: '啤酒节活动', icon: '🍺', color: '#FFD700', desc: '精酿啤酒品鉴、新品首发、门店联动' },
+  { id: 'music_festival', name: '音乐节活动', icon: '🎵', color: '#E91E63', desc: '现场音乐、品牌联名、氛围营销' },
+  { id: 'pop_up', name: '快闪活动', icon: '⚡', color: '#9C27B0', desc: '限时快闪、打卡引流、社交裂变' }
+];
+
+// 活动状态定义
+const EVENT_STATUSES = {
+  draft: { label: '草稿', color: '#666' },
+  published: { label: '已发布', color: '#4CAF50' },
+  ongoing: { label: '进行中', color: '#2196F3' },
+  ended: { label: '已结束', color: '#999' }
+};
+
+// 预置活动模板（含绿皮火车首发等真实数据）
+const EVENT_TEMPLATES = [
+  {
+    id: 'tpl_green_train',
+    type: 'beer_festival',
+    title: '绿皮火车西海岸IPA首发',
+    subtitle: '儿童节快乐！TWO GIRLS绿皮火车已出发，下一站到哪？',
+    coverImage: '',
+    startDate: '2026-06-01',
+    endDate: '2026-06-30',
+    location: '全部门店',
+    description: `绿皮摇晃 酒花绽放
+
+站台渐远 麦香渐浓
+铁轨锈迹酿出黄金液体 哐当声里摇晃出绵密酒沫
+车窗略过的每一帧风景，都在酒沫里慢速放映
+
+也许，笨重的火车需要花费愚蠢的奔跑才能来到你的站台。
+我们来了，希望你也在等待。
+
+TWO GIRLS 绿皮火车西海岸IPA期待您的打卡`,
+    benefits: [
+      { title: '定制 TWO GIRLS品牌T恤*1', icon: '👕' },
+      { title: '定制 TWO GIRLS 品牌美式品脱杯*1', icon: '🍺' },
+      { title: '门店定制推广策划——打卡活动', icon: '📸' },
+      { title: '隐藏福利：铁路公园店开业暨上街店2周年庆店铺畅饮券1张', icon: '🎫' }
+    ],
+    stores: {
+      福州: ['TWO GIRLS精酿啤酒&CBBQ(闽侯上街店)', 'TWO GIRLS精酿啤酒&CBBQ烧烤(三盛i33店)', '山石酒馆 兔子洞万宝店', '山石酒馆 稻田岩烧店', '山石酒馆 中式炭火烧烤五四路店', 'M-CORNER遇转角·美式餐吧', '山海旅人', '胡子精酿H.zi Tap Room', '酒漾精酿啤酒馆', '土狗精酿', '斑马酒馆', '东西精酿', '熏+12HOURS(A·ONE运动公园店)', '熏+12HOURS(融侨里店)', '上头时刻精酿酒馆', '9厝·BAR', 'LA精酿博物馆', 'lofi精酿&咖啡', 'LOOK精酿'],
+      莆田: ['云雀西餐厅'],
+      龙岩: ['竹修Tap Room'],
+      宁德: ['城北精酿', '小里的房子'],
+      厦门: ['TWO GIRLS精酿啤酒&艾尔拉格', '瓦伦sm店', '野菌培养室', '九十新疆酒食', '丹尼大叔军梦双拥店', '叹食TIMES·Y融合精酿餐吧', '永Forever酒吧', '甲板DECK', 'PokerGo bar', '巷仔精酿', '大饮好市', '0985精酿', '二狗精酿软件园店', '反派FunPal·融合餐酒馆', '灰熊精酿', '沫须有MORE SEE YOU', 'RTS开熏', '99ZOOM众', '打铁精酿', '非水酒屋NON-WATER TAPROOM', '请裁酒家'],
+      泉州: ['山海精酿', '酒酿时光', 'LIT精酿', '中性牛奶旅店'],
+      漳州: ['菜鸟', 'HOOK beer shop', '府呈食酒馆', '单向道精酿咖啡', '地气小酒馆', '阿卜杜拉·uptolove精酿酒馆', '44·TapRoom']
+    },
+    tags: ['首发福利', '打卡赠饮', '绿皮火车', '西海岸IPA', '儿童节'],
+    isTemplate: true,
+    createdAt: '2026-06-01T00:00:00Z'
+  },
+  {
+    id: 'tpl_xiamen_beerfest',
+    type: 'beer_festival',
+    title: '2026厦门首届精酿啤酒节',
+    subtitle: '奔赴夏日星际 邂逅微醺奇遇',
+    coverImage: '',
+    startDate: '2026-05-29',
+    endDate: '2026-05-31',
+    location: '厦门·磐基中心东北门广场',
+    description: `五月风柔，初夏正好。爵对好势: 2026厦门首届精酿啤酒节即将开启，诚邀您一起登陆鹭岛星球开启漫游之旅。让我们共同乘坐爵士晚风，在烟火里尽情摇摆，解锁别样城市乐趣！`,
+    benefits: [
+      { title: '暖场 / 主持人开场', icon: '🎤' },
+      { title: '主办方致辞 / 嘉宾致辞', icon: '🗣️' },
+      { title: '厂牌巡礼', icon: '🍺' },
+      { title: '开桶仪式 / 祝酒启幕', icon: '🥂' }
+    ],
+    schedule: [
+      { time: '15:30-15:35', item: '暖场 / 主持人开场' },
+      { time: '15:35-15:40', item: '主办方致辞 / 嘉宾致辞' },
+      { time: '15:40-15:45', item: '厂牌巡礼' },
+      { time: '15:45-15:50', item: '开桶仪式 / 祝酒启幕' }
+    ],
+    tags: ['精酿啤酒节', '厦门', '爵对好势2026', '磐基中心'],
+    isTemplate: true,
+    createdAt: '2026-05-20T00:00:00Z'
+  },
+  {
+    id: 'tpl_music_night',
+    type: 'music_festival',
+    title: '周末音乐现场',
+    subtitle: '精酿 x 音乐 微醺之夜',
+    coverImage: '',
+    startDate: '2026-06-07',
+    endDate: '2026-06-07',
+    location: 'TWO GIRLS 铁路公园店',
+    description: `每周六晚，在1955铁路公园火车车厢中，享受现场音乐与精酿啤酒的完美碰撞。
+独立乐队演出 + 精酿特调 + 限定小吃`,
+    benefits: [
+      { title: '独立乐队现场演出', icon: '🎸' },
+      { title: '精酿特调饮品买一送一', icon: '🍺' },
+      { title: '限量版周边抽奖', icon: '🎁' }
+    ],
+    tags: ['音乐现场', '周末', '铁路公园', '独立乐队'],
+    isTemplate: true,
+    createdAt: '2026-06-01T00:00:00Z'
+  },
+  {
+    id: 'tpl_pop_up_summer',
+    type: 'pop_up',
+    title: '夏日快闪打卡站',
+    subtitle: '来TWO GIRLS打卡，赢取限量周边',
+    coverImage: '',
+    startDate: '2026-06-15',
+    endDate: '2026-08-31',
+    location: '全部门店联动',
+    description: `消费者到店购买任意产品，并在美团/大众点评/抖音/小红书/微信朋友圈等社交平台发布相关图文视频，即可获赠精美礼品一份！
+PS：推广活动赠品由厂牌提供，请门店保存相关打卡截图，联系客服核销。`,
+    benefits: [
+      { title: '社交媒体打卡赠饮', icon: '📱' },
+      { title: '限量品牌周边', icon: '👕' },
+      { title: '门店专属优惠券', icon: '🎟️' },
+      { title: '月度最佳打卡奖励', icon: '🏆' }
+    ],
+    tags: ['快闪', '打卡', '夏日', '社交裂变', '小红书'],
+    isTemplate: true,
+    createdAt: '2026-06-01T00:00:00Z'
+  }
+];
+
+// 内存中的活动数据（带持久化）
+let eventsData = loadCustomData('events.json', []);
+// 活动ID计数器
+let eventIdCounter = eventsData.length > 0 ? Math.max(...eventsData.map(e => parseInt(e._counter || 0))) + 1 : 1;
+
 // 内存中的对话历史 (agentId -> messages[])
 let chatHistories = {};
 const MAX_CHAT_HISTORY = 100;
@@ -215,6 +347,8 @@ const API_ROUTES = {
       providers,
       resources: resourceLibrary,
       resourceCategories: RESOURCE_CATEGORIES,
+      events: eventsData,
+      eventTypes: EVENT_TYPES,
       stats: {
         totalAgents: allAgents.length,
         activeChannels: channelSettings.filter(c => c.connected).length,
@@ -222,11 +356,16 @@ const API_ROUTES = {
         activeSkills: allSkills.length,
         activeCronJobs: allCron.filter(c => c.active).length,
         connectedProviders: providers.filter(p => p.connected).length,
-        totalResources: resourceLibrary.length
+        totalResources: resourceLibrary.length,
+        totalEvents: eventsData.length
       }
     }
     };
-  }
+  },
+  '/api/events/types': () => ({ success: true, data: EVENT_TYPES }),
+  '/api/events/templates': () => ({ success: true, data: EVENT_TEMPLATES }),
+  '/api/events/statuses': () => ({ success: true, data: EVENT_STATUSES }),
+  '/api/events': () => ({ success: true, data: eventsData })
 };
 
 // 动态API: /api/agents/:id/:layer
@@ -1280,6 +1419,219 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // ========== 活动发布 CRUD ==========
+    const eventMatch = pathname.match(/^\/api\/events\/(event_\w+)$/);
+
+    // GET /api/events/:id - 获取单个活动详情
+    if (eventMatch && req.method === 'GET') {
+      const eventId = eventMatch[1];
+      const event = eventsData.find(e => e.id === eventId);
+      if (event) {
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, data: event }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: '活动不存在' }));
+      }
+      return;
+    }
+
+    // POST /api/events - 创建新活动
+    if (pathname === '/api/events' && req.method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.title || !body.type) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: '缺少必要字段: title, type' }));
+        return;
+      }
+      const newEvent = {
+        id: 'event_' + Date.now(),
+        _counter: eventIdCounter++,
+        type: body.type,
+        title: body.title,
+        subtitle: body.subtitle || '',
+        coverImage: body.coverImage || '',
+        startDate: body.startDate || '',
+        endDate: body.endDate || '',
+        location: body.location || '',
+        description: body.description || '',
+        benefits: body.benefits || [],
+        stores: body.stores || null,
+        schedule: body.schedule || [],
+        tags: body.tags || [],
+        status: body.status || 'draft',
+        shareText: body.shareText || '',
+        qrCodeUrl: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      eventsData.push(newEvent);
+      saveCustomData('events.json', eventsData);
+      res.writeHead(201);
+      res.end(JSON.stringify({ success: true, data: newEvent }));
+      return;
+    }
+
+    // PUT /api/events/:id - 更新活动
+    if (eventMatch && req.method === 'PUT') {
+      const eventId = eventMatch[1];
+      const body = await parseBody(req);
+      const idx = eventsData.findIndex(e => e.id === eventId);
+      if (idx !== -1) {
+        eventsData[idx] = { ...eventsData[idx], ...body, id: eventId, updatedAt: new Date().toISOString() };
+        saveCustomData('events.json', eventsData);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, data: eventsData[idx] }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: '活动不存在' }));
+      }
+      return;
+    }
+
+    // DELETE /api/events/:id - 删除活动
+    if (eventMatch && req.method === 'DELETE') {
+      const eventId = eventMatch[1];
+      const idx = eventsData.findIndex(e => e.id === eventId);
+      if (idx !== -1) {
+        eventsData.splice(idx, 1);
+        saveCustomData('events.json', eventsData);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: '活动不存在' }));
+      }
+      return;
+    }
+
+    // POST /api/events/publish - 发布活动（草稿→已发布）
+    if (pathname === '/api/events/publish' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const eventId = body.id;
+      if (!eventId) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: '缺少活动ID' }));
+        return;
+      }
+      const idx = eventsData.findIndex(e => e.id === eventId);
+      if (idx === -1) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: '活动不存在' }));
+        return;
+      }
+      eventsData[idx].status = 'published';
+      eventsData[idx].updatedAt = new Date().toISOString();
+      saveCustomData('events.json', eventsData);
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, data: eventsData[idx] }));
+      return;
+    }
+
+    // POST /api/events/qrcode - 生成分享二维码
+    if (pathname === '/api/events/qrcode' && req.method === 'POST') {
+      try {
+        const body = await parseBody(req);
+        const { text, size = 300 } = body;
+
+        // 构建分享内容
+        let qrContent = text || '';
+        if (!qrContent) {
+          const eventId = body.eventId;
+          if (eventId) {
+            const evt = eventsData.find(e => e.id === eventId);
+            if (evt) {
+              // 生成包含活动信息的分享文本
+              const shareInfo = `${evt.title}\n${evt.subtitle || ''}\n\n📅 ${evt.startDate}${evt.endDate ? ' ~ ' + evt.endDate : ''}\n📍 ${evt.location}\n\n${evt.description?.slice(0, 100) || ''}`;
+              qrContent = `https://twogirls.brew/event/${evt.id.replace('event_', '')}`;
+              // 将详细信息存为备注
+              evt._shareInfo = shareInfo;
+              evt._shareQrContent = qrContent;
+              saveCustomData('events.json', eventsData);
+            }
+          }
+        }
+
+        if (!qrContent) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ success: false, error: '无法生成二维码：缺少内容' }));
+          return;
+        }
+
+        // 使用 qrcode 库生成 Data URL
+        const qrDataUrl = await QRCode.toDataURL(qrContent, {
+          width: Math.min(size, 800),
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#ffffff'
+          },
+          errorCorrectionLevel: 'M'
+        });
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          data: {
+            qrDataUrl,
+            content: qrContent,
+            size
+          }
+        }));
+      } catch (err) {
+        console.error('[QR Code Error]', err.message);
+        res.writeHead(500);
+        res.end(JSON.stringify({ success: false, error: '二维码生成失败: ' + err.message }));
+      }
+      return;
+    }
+
+    // POST /api/events/clone-from-template - 从模板创建活动
+    if (pathname === '/api/events/clone-template' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const templateId = body.templateId;
+      if (!templateId) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: '缺少模板ID' }));
+        return;
+      }
+
+      const template = EVENT_TEMPLATES.find(t => t.id === templateId);
+      if (!template) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: '模板不存在' }));
+        return;
+      }
+
+      const newEvent = {
+        id: 'event_' + Date.now(),
+        _counter: eventIdCounter++,
+        type: template.type,
+        title: body.title || template.title,
+        subtitle: template.subtitle || '',
+        coverImage: body.coverImage || template.coverImage || '',
+        startDate: body.startDate || template.startDate || '',
+        endDate: body.endDate || template.endDate || '',
+        location: body.location || template.location || '',
+        description: template.description || '',
+        benefits: template.benefits || [],
+        stores: template.stores || null,
+        schedule: template.schedule || [],
+        tags: template.tags || [],
+        status: 'draft',
+        shareText: '',
+        clonedFrom: templateId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      eventsData.push(newEvent);
+      saveCustomData('events.json', eventsData);
+      res.writeHead(201);
+      res.end(JSON.stringify({ success: true, data: newEvent }));
+      return;
+    }
+
     // 静态API
     if (API_ROUTES[pathname]) {
       res.writeHead(200);
@@ -1326,15 +1678,58 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`\n🍺 Two Girls Brew 后台管理系统已启动`);
-  console.log(`   http://localhost:${PORT}\n`);
-  console.log(`   API: http://localhost:${PORT}/api/dashboard`);
-  console.log(`   智能体: http://localhost:${PORT}/api/agents`);
-  console.log(`   频道: http://localhost:${PORT}/api/channels`);
-  console.log(`   MCP: http://localhost:${PORT}/api/mcp`);
-  console.log(`   技能: http://localhost:${PORT}/api/skills`);
-  console.log(`   定时任务: http://localhost:${PORT}/api/cron\n`);
-});
+// 启动服务器，处理端口占用
+function startServer(port) {
+  server.listen(port, () => {
+    console.log(`\n🍺 Two Girls Brew 后台管理系统已启动`);
+    console.log(`   http://localhost:${port}\n`);
+    console.log(`   API: http://localhost:${port}/api/dashboard`);
+    console.log(`   智能体: http://localhost:${port}/api/agents`);
+    console.log(`   频道: http://localhost:${port}/api/channels`);
+    console.log(`   MCP: http://localhost:${port}/api/mcp`);
+    console.log(`   技能: http://localhost:${port}/api/skills`);
+    console.log(`   定时任务: http://localhost:${port}/api/cron\n`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`⚠️ 端口 ${port} 已被占用，尝试自动释放...`);
+      // 尝试杀掉占用端口的进程（仅在 Electron 打包环境下）
+      try {
+        const { execSync } = require('child_process');
+        const result = execSync(`lsof -ti:${port}`, { encoding: 'utf-8', timeout: 3000 }).trim();
+        if (result) {
+          const pids = result.split('\n');
+          const ourPid = String(process.pid);
+          pids.forEach(pid => {
+            if (pid && pid !== ourPid) {
+              try {
+                process.kill(parseInt(pid), 'SIGTERM');
+                console.log(`✅ 已终止占用端口的进程 PID:${pid}`);
+              } catch (killErr) {
+                // 进程可能已经不存在
+              }
+            }
+          });
+        }
+      } catch (execErr) {
+        // lsof 可能不可用，尝试换端口
+      }
+      // 等待端口释放后重试
+      setTimeout(() => {
+        console.log(`🔄 重新尝试绑定端口 ${port}...`);
+        server.close();
+        server.listen(port, () => {
+          console.log(`✅ 端口 ${port} 已释放，服务器重新启动成功`);
+        });
+      }, 1000);
+    } else {
+      console.error('❌ 服务器启动失败:', err.message);
+      process.exit(1);
+    }
+  });
+}
+
+startServer(PORT);
 
 module.exports = server;

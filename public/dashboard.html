@@ -614,7 +614,7 @@ body {
   <!-- 侧边栏 -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-logo">🍺</div>
+      <div class="sidebar-logo"><img src="/logo.jpg" alt="Two Girls Brew" style="width:36px;height:36px;object-fit:contain;border-radius:8px;" /></div>
       <div class="sidebar-brand">
         <h2>Two Girls Brew</h2>
         <span>AI搭档后台 v3.3</span>
@@ -652,6 +652,12 @@ body {
         <div class="nav-section-title">频道</div>
         <div id="channelNav"></div>
       </div>
+      <div class="nav-section">
+        <div class="nav-section-title">功能</div>
+        <button class="nav-item" onclick="showSection('events')">🎉 活动发布</button>
+        <button class="nav-item" onclick="showSection('resources')">📚 资源库</button>
+        <button class="nav-item" onclick="showSection('settings')">⚙️ 系统设置</button>
+      </div>
     </nav>
     <!-- 用户信息 -->
     <div class="sidebar-user">
@@ -660,7 +666,7 @@ body {
         <div class="user-name" id="userName">加载中...</div>
         <div class="user-role" id="userRole"></div>
       </div>
-      <button class="user-logout" onclick="logout()" title="退出登录">🚪</button>
+      <button class="user-logout" id="logoutBtn" title="退出登录">🚪</button>
     </div>
   </aside>
 
@@ -690,6 +696,8 @@ body {
       <div class="content-section" id="section-channels"></div>
       <!-- 资源库 -->
       <div class="content-section" id="section-resources"></div>
+      <!-- 活动发布 -->
+      <div class="content-section" id="section-events"></div>
       <!-- 设置 -->
       <div class="content-section" id="section-settings"></div>
     </div>
@@ -773,25 +781,36 @@ const LAYER_ICONS = { identity: '🆔', memory: '🧠', soul: '💫', user: '�
 
 // ========== API调用 ==========
 async function fetchData() {
-  const res = await fetch('/api/dashboard');
-  const json = await res.json();
-  if (json.success) {
-    state.agents = json.data.agents;
-    state.channels = json.data.channels;
-    state.mcp = json.data.mcp;
-    state.skills = json.data.skills;
-    state.cronJobs = json.data.cronJobs;
-    state.providers = json.data.providers || [];
-    state.resources = json.data.resources || [];
-    state.resourceCategories = json.data.resourceCategories || [];
-    state.stats = json.data.stats;
+  try {
+    const res = await fetch('/api/dashboard');
+    const json = await res.json();
+    if (json.success) {
+      state.agents = json.data.agents || [];
+      state.channels = json.data.channels || [];
+      state.mcp = json.data.mcp || [];
+      state.skills = json.data.skills || [];
+      state.cronJobs = json.data.cronJobs || [];
+      state.providers = json.data.providers || [];
+      state.resources = json.data.resources || [];
+      state.resourceCategories = json.data.resourceCategories || [];
+      state.stats = json.data.stats || {};
+    } else {
+      console.error('[Dashboard] fetchData failed:', json);
+    }
+  } catch (e) {
+    console.error('[Dashboard] fetchData error:', e);
+    // 即使获取数据失败也继续渲染
+    state.agents = state.agents || [];
+    state.stats = state.stats || {};
   }
 }
 
 // ========== 渲染 ==========
 function renderDashboard() {
-  const s = state.stats;
-  document.getElementById('section-dashboard').innerHTML = `
+  const s = state.stats || {};
+  const el = document.getElementById('section-dashboard');
+  if (!el) return;
+  el.innerHTML = `
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-card-header"><span class="stat-card-icon">🤖</span></div>
@@ -855,7 +874,7 @@ function renderChat() {
   document.getElementById('section-chat').innerHTML = `
     <div class="chat-area">
       <div style="padding:12px 24px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-        <span style="font-size:18px">🍺</span>
+        <img src="/logo.jpg" alt="Two Girls Brew" style="width:24px;height:24px;object-fit:contain;border-radius:4px;" />
         <div style="flex:1">
           <div style="font-size:14px;font-weight:600">通用对话</div>
           <div style="font-size:11px;color:var(--text-secondary)">选择AI搭档开始专属对话，或直接输入指令</div>
@@ -2305,7 +2324,7 @@ function renderGeneralSettings() {
 function renderAbout() {
   return `
     <div class="settings-section">
-      <div class="settings-section-title">🍺 Two Girls Brew AI 搭档系统</div>
+      <div class="settings-section-title"><img src="/logo.jpg" alt="Two Girls Brew" style="width:20px;height:20px;object-fit:contain;border-radius:4px;vertical-align:middle;margin-right:6px;" /> Two Girls Brew AI 搭档系统</div>
       <div style="font-size:13px;color:var(--text-secondary);line-height:2">
         <p>版本: <strong style="color:var(--text-primary)">v3.3.0</strong></p>
         <p>架构: 9智能体 × 6层 = 54知识模块</p>
@@ -3283,7 +3302,7 @@ function showSection(section) {
   const titles = {
     dashboard: '仪表盘', chat: '新对话', agents: 'AI搭档管理',
     mcp: 'MCP连接器', skills: '技能管理', cron: '定时任务', channels: '频道管理',
-    resources: '📚 资源库', settings: '系统设置'
+    resources: '📚 资源库', events: '🎉 活动发布', settings: '系统设置'
   };
   document.getElementById('topbarTitle').textContent = titles[section] || section;
   document.getElementById('topbarSubtitle').textContent = '';
@@ -3295,6 +3314,7 @@ function showSection(section) {
   if (section === 'cron') renderCron();
   if (section === 'channels') renderChannels();
   if (section === 'resources') renderResources();
+  if (section === 'events') renderEvents();
   if (section === 'settings') renderSettings();
 }
 
@@ -3319,7 +3339,7 @@ function sendChat() {
       setTimeout(() => {
         container.innerHTML += `
           <div style="margin-bottom:16px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span>🍺</span><span style="font-size:12px;color:var(--text-secondary)">Two Girls Brew AI</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><img src="/logo.jpg" alt="Two Girls Brew" style="width:18px;height:18px;object-fit:contain;border-radius:4px;" /><span style="font-size:12px;color:var(--text-secondary)">Two Girls Brew AI</span></div>
             <div style="display:inline-block;background:var(--bg-card);padding:10px 16px;border-radius:0 12px 12px 12px;font-size:13px;max-width:70%;border:1px solid var(--border)">
               请选择一个AI搭档开始专属对话，以获得更精准的专业建议。<br><br>
               <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -3806,27 +3826,741 @@ document.addEventListener('keydown', e => {
 
 // ========== 初始化 ==========
 async function init() {
-  // 渲染用户信息
-  if (CURRENT_USER) {
-    document.getElementById('userAvatar').textContent = CURRENT_USER.avatar || '👤';
-    document.getElementById('userName').textContent = CURRENT_USER.name;
-    document.getElementById('userRole').textContent = CURRENT_USER.roleName || CURRENT_USER.role;
+  try {
+    // 绑定事件（使用 addEventListener 避免 onclick 在函数未定义时报错）
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', logout);
+    }
+
+    // 渲染用户信息
+    if (CURRENT_USER) {
+      const avatarEl = document.getElementById('userAvatar');
+      const nameEl = document.getElementById('userName');
+      const roleEl = document.getElementById('userRole');
+      if (avatarEl) avatarEl.textContent = CURRENT_USER.avatar || '👤';
+      if (nameEl) nameEl.textContent = CURRENT_USER.name;
+      if (roleEl) roleEl.textContent = CURRENT_USER.roleName || CURRENT_USER.role;
+    }
+    await fetchData();
+    renderDashboard();
+    renderSidebar();
+    // 预渲染所有section
+    renderChat();
+    renderAgents();
+    renderMcp();
+    renderSkills();
+    renderCron();
+    renderChannels();
+    renderResources();
+    renderEvents();
+    renderSettings();
+  } catch (e) {
+    console.error('[Dashboard] init error:', e);
   }
-  await fetchData();
-  renderDashboard();
-  renderSidebar();
-  // 预渲染所有section
-  renderChat();
-  renderAgents();
-  renderMcp();
-  renderSkills();
-  renderCron();
-  renderChannels();
-  renderResources();
-  renderSettings();
 }
 
-init();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+// ========== 活动发布模块 ==========
+let eventsState = {
+  list: [],
+  types: [],
+  templates: [],
+  statuses: {},
+  currentView: 'list', // list | create | detail | template
+  currentEvent: null,
+  editingEvent: null
+};
+
+async function renderEvents() {
+  try {
+    const [eventsRes, typesRes, templatesRes, statusRes] = await Promise.all([
+      fetch('/api/events').then(r => r.json()),
+      fetch('/api/events/types').then(r => r.json()),
+      fetch('/api/events/templates').then(r => r.json()),
+      fetch('/api/events/statuses').then(r => r.json())
+    ]);
+    if (eventsRes.success) eventsState.list = eventsRes.data || [];
+    if (typesRes.success) eventsState.types = typesRes.data || [];
+    if (templatesRes.success) eventsState.templates = templatesRes.data || [];
+    if (statusRes.success) eventsState.statuses = statusRes.data || {};
+  } catch (e) { console.error('[Events] Load error:', e); }
+
+  const container = document.getElementById('section-events');
+  if (!container) return;
+
+  if (eventsState.currentView === 'create') {
+    renderEventCreate(container);
+  } else if (eventsState.currentView === 'detail') {
+    renderEventDetail(container);
+  } else if (eventsState.currentView === 'template') {
+    renderEventTemplates(container);
+  } else {
+    renderEventList(container);
+  }
+}
+
+function renderEventList(container) {
+  eventsState.currentView = 'list';
+  const { list, types, statuses, templates } = eventsState;
+
+  container.innerHTML = `
+    <div style="padding:24px;max-width:1200px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <h2 style="font-size:22px;font-weight:700;margin-bottom:4px">🎉 活动发布中心</h2>
+          <p style="font-size:13px;color:var(--text-secondary)">啤酒节 · 音乐节 · 快闪活动 — 一键创建、分享二维码直达社群</p>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-outline" onclick="eventsState.currentView='template';renderEvents()" style="white-space:nowrap">📋 活动模板</button>
+          <button class="btn btn-primary" onclick="eventsState.currentView='create';renderEvents()" style="white-space:nowrap">+ 新建活动</button>
+        </div>
+      </div>
+
+      <!-- 活动类型快捷入口 -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px">
+        ${types.map(t => `
+          <div class="card" style="padding:16px;cursor:pointer;border-left:3px solid ${t.color};display:flex;align-items:center;gap:12px"
+               onclick="createEventFromType('${t.id}')">
+            <span style="font-size:28px">${t.icon}</span>
+            <div>
+              <div style="font-weight:600;font-size:14px">${t.name}</div>
+              <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${t.desc}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- 活动列表 -->
+      <div style="background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:600;font-size:14px">已创建活动 (${list.length})</span>
+          ${list.length === 0 ? '' : '<span style="font-size:12px;color:var(--text-secondary)">点击查看详情 / 分享</span>'}
+        </div>
+        ${list.length === 0 ? `
+          <div style="padding:60px 20px;text-align:center">
+            <div style="font-size:48px;margin-bottom:12px">📅</div>
+            <div style="color:var(--text-secondary);margin-bottom:8px">暂无活动</div>
+            <div style="font-size:12px;color:var(--text-muted)">从模板快速创建，或从零开始自定义活动</div>
+            <button class="btn btn-primary" style="margin-top:16px" onclick="eventsState.currentView='template';renderEvents()">浏览活动模板 →</button>
+          </div>
+        ` : `
+          <div style="max-height:500px;overflow-y:auto">
+            ${list.map(evt => {
+              const typeInfo = types.find(t => t.id === evt.type) || {};
+              const statusInfo = statuses[evt.status] || { label: evt.status, color: '#666' };
+              return `
+                <div class="event-card-row" onclick="openEventDetail('${evt.id}')" style="padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:14px;transition:background .15s"
+                     onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
+                  <div style="width:42px;height:42px;border-radius:10px;background:${typeInfo.color}20;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${typeInfo.icon || '📅'}</div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px">
+                      <span>${escapeHtml(evt.title)}</span>
+                      <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${statusInfo.color}20;color:${statusInfo.color};font-weight:500">${statusInfo.label}</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--text-secondary);margin-top:3px;display:flex;align-items:center;gap:12px">
+                      <span>📍 ${escapeHtml(evt.location)}</span>
+                      <span>📅 ${evt.startDate}${evt.endDate ? '~' + evt.endDate : ''}</span>
+                      ${evt.tags?.length ? `<span style="color:var(--accent)">#${evt.tags[0]}</span>` : ''}
+                    </div>
+                  </div>
+                  <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
+                    ${evt.status !== 'published' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();publishEvent('${evt.id}')">🚀 发布</button>` : ''}
+                    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();showEventQrCode('${evt.id}')">📱 二维码</button>
+                    <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteEvent('${evt.id})'" style="color:var(--red)">🗑</button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      </div>
+
+      <!-- 模板预览卡片 -->
+      ${templates.length > 0 && list.length < 5 ? `
+        <div style="margin-top:24px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:12px">📋 推荐模板</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+            ${templates.slice(0, 2).map(tpl => {
+              const typeInfo = types.find(t => t.id === tpl.type) || {};
+              return `
+                <div class="card" style="padding:14px;cursor:pointer;border-left:3px solid ${typeInfo.color}"
+                     onclick="cloneFromTemplate('${tpl.id}')">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <span>${typeInfo.icon}</span>
+                    <span style="font-weight:600;font-size:13px">${escapeHtml(tpl.title)}</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--text-secondary)">${escapeHtml(tpl.subtitle?.slice(0,50))}</div>
+                  <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap">
+                    ${(tpl.tags||[]).slice(0,3).map(tag => `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:var(--bg-input);color:var(--text-muted)">${tag}</span>`).join('')}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- 内联样式 -->
+    <style>
+      .event-card-row:last-child { border-bottom: none !important; }
+      .event-form-group { margin-bottom: 18px; }
+      .event-form-label { display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px }
+      .event-form-input { width:100%;padding:10px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;transition:border-color .15s }
+      .event-form-input:focus { outline:none;border-color:var(--accent) }
+      .event-form-textarea { width:100%;min-height:100px;padding:10px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;resize:vertical }
+      .event-form-select { width:100%;padding:10px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:13px;appearance:none }
+      .event-type-btn { padding:14px;border:2px solid var(--border);border-radius:var(--radius);background:transparent;cursor:pointer;transition:all .15s;text-align:center }
+      .event-type-btn:hover { border-color:var(--accent) }
+      .event-type-btn.selected { border-color:var(--accent);background:rgba(233,30,99,.08) }
+      .benefit-tag { display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg-input);border-radius:20px;font-size:12px;margin:2px }
+      .tag-chip { display:inline-block;padding:4px 10px;background:rgba(233,30,99,.1);color:var(--accent);border-radius:20px;font-size:11px;margin:2px }
+      .qr-modal-overlay { position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center }
+      .qr-modal-content { background:var(--bg-card);border-radius:16px;padding:28px;max-width:420px;width:90%;text-align:center;border:1px solid var(--border) }
+      .qr-code-img { max-width:260px;border-radius:12px;margin:12px auto }
+      .share-btn-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px }
+    </style>
+  `;
+}
+
+function renderEventCreate(container) {
+  const { types } = eventsState;
+  
+  container.innerHTML = `
+    <div style="padding:24px;max-width:800px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button class="btn btn-ghost btn-sm" onclick="eventsState.currentView='list';renderEvents()">← 返回列表</button>
+        <h2 style="font-size:20px;font-weight:700">✨ 创建新活动</h2>
+      </div>
+
+      <form id="eventCreateForm" onsubmit="handleEventSubmit(event)">
+        <!-- 选择活动类型 -->
+        <div class="event-form-group">
+          <label class="event-form-label">活动类型 *</label>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            ${types.map((t, i) => `
+              <button type="button" class="event-type-btn ${i===0?'selected':''}" data-type="${t.id}" onclick="selectEventType(this,'${t.id}')">
+                <div style="font-size:32px;margin-bottom:4px">${t.icon}</div>
+                <div style="font-weight:600;font-size:13px">${t.name}</div>
+              </button>
+            `).join('')}
+          </div>
+          <input type="hidden" id="eventType" value="${types[0]?.id || 'beer_festival'}" />
+        </div>
+
+        <!-- 基本信息 -->
+        <div class="event-form-group">
+          <label class="event-form-label">活动标题 *</label>
+          <input type="text" class="event-form-input" id="eventTitle" placeholder="例：绿皮火车西海岸IPA首发活动" required />
+        </div>
+        
+        <div class="event-form-group">
+          <label class="event-form-label">副标题 / 口号</label>
+          <input type="text" class="event-form-input" id="eventSubtitle" placeholder="儿童节快乐！TWO GIRLS绿皮火车已出发..." />
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="event-form-group">
+            <label class="event-form-label">开始日期 *</label>
+            <input type="date" class="event-form-input" id="eventStartDate" required />
+          </div>
+          <div class="event-form-group">
+            <label class="event-form-label">结束日期</label>
+            <input type="date" class="event-form-input" id="eventEndDate" />
+          </div>
+        </div>
+
+        <div class="event-form-group">
+          <label class="event-form-label">活动地点 *</label>
+          <input type="text" class="event-form-input" id="eventLocation" placeholder="例：全部门店 / 厦门·磐基中心" required />
+        </div>
+
+        <!-- 活动详情 -->
+        <div class="event-form-group">
+          <label class="event-form-label">活动详情描述</label>
+          <textarea class="event-form-textarea" id="eventDescription" placeholder="详细描述活动内容、亮点、参与方式...&#10;&#10;支持多行文本"></textarea>
+        </div>
+
+        <!-- 福利权益 -->
+        <div class="event-form-group">
+          <label class="event-form-label">福利/权益（每行一条）</label>
+          <textarea class="event-form-textarea" id="eventBenefits" placeholder="👕 定制品牌T恤*1&#10;🍺 品牌美式品脱杯*1&#10;📸 打卡赠饮活动&#10;🎫 隐藏福利：畅饮券" style="min-height:80px"></textarea>
+        </div>
+
+        <!-- 参与门店（按城市分组） -->
+        <div class="event-form-group">
+          <label class="event-form-label">参与门店（按行填写：城市 门店名）</label>
+          <textarea class="event-form-textarea" id="eventStores" placeholder="福州 TWO GIRLS精酿啤酒&CBBQ(闽侯上街店)&#10;福州 山石酒馆 兔子洞万宝店&#10;厦门 瓦伦sm店&#10;厦门 野菌培养室" style="min-height:70px"></textarea>
+        </div>
+
+        <!-- 标签 -->
+        <div class="event-form-group">
+          <label class="event-form-label">标签（逗号分隔）</label>
+          <input type="text" class="event-form-input" id="eventTags" placeholder="首发福利, 打卡赠饮, 绿皮火车, 西海岸IPA" />
+        </div>
+
+        <!-- 社交分享文案 -->
+        <div class="event-form-group">
+          <label class="event-form-label">朋友圈/社群 分享文案</label>
+          <textarea class="event-form-textarea" id="eventShareText" placeholder="用于生成二维码后的分享内容提示..."></textarea>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div style="display:flex;gap:12px;margin-top:24px">
+          <button type="submit" class="btn btn-primary" style="flex:1;padding:12px">✨ 创建并预览</button>
+          <button type="button" class="btn btn-outline" onclick="eventsState.currentView='list';renderEvents()">取消</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function renderEventDetail(container) {
+  const evt = eventsState.currentEvent;
+  if (!evt) { renderEventList(container); return; }
+  const typeInfo = eventsState.types.find(t => t.id === evt.type) || {};
+  const statusInfo = eventsState.statuses[evt.status] || { label: evt.status, color: '#666' };
+
+  container.innerHTML = `
+    <div style="padding:24px;max-width:900px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button class="btn btn-ghost btn-sm" onclick="eventsState.currentView='list';renderEvents()">← 返回列表</button>
+        <h2 style="font-size:20px;font-weight:700">${typeInfo.icon} ${escapeHtml(evt.title)}</h2>
+        <span style="font-size:11px;padding:3px 10px;border-radius:12px;background:${statusInfo.color}20;color:${statusInfo.color};font-weight:600">${statusInfo.label}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
+        <!-- 左侧：活动内容 -->
+        <div>
+          <!-- 封面区 -->
+          <div class="card" style="padding:20px;margin-bottom:16px;background:linear-gradient(135deg,${typeInfo.color}15,${typeInfo.color}05);border-left:4px solid ${typeInfo.color}">
+            ${evt.coverImage ? `<img src="${evt.coverImage}" style="width:100%;border-radius:8px;margin-bottom:12px;max-height:200px;object-fit:cover" />` : ''}
+            <div style="font-size:22px;font-weight:700;margin-bottom:4px">${escapeHtml(evt.title)}</div>
+            ${evt.subtitle ? `<div style="font-size:14px;color:var(--accent);margin-bottom:10px">${escapeHtml(evt.subtitle)}</div>` : ''}
+            <div style="display:flex;gap:16px;font-size:12px;color:var(--text-secondary);flex-wrap:wrap">
+              <span>📅 ${evt.startDate}${evt.endDate ? ' ~ ' + evt.endDate : ''}</span>
+              <span>📍 ${escapeHtml(evt.location)}</span>
+              <span>${typeInfo.icon} ${typeInfo.name}</span>
+            </div>
+          </div>
+
+          <!-- 活动详情 -->
+          ${evt.description ? `
+            <div class="card" style="padding:20px;margin-bottom:16px">
+              <div style="font-weight:600;font-size:14px;margin-bottom:10px">📝 活动详情</div>
+              <div style="font-size:13px;line-height:1.8;color:var(--text-secondary);white-space:pre-wrap">${escapeHtml(evt.description)}</div>
+            </div>
+          ` : ''}
+
+          <!-- 福利权益 -->
+          ${evt.benefits?.length ? `
+            <div class="card" style="padding:20px;margin-bottom:16px">
+              <div style="font-weight:600;font-size:14px;margin-bottom:10px">🎁 福利/权益</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                ${evt.benefits.map(b => `<span class="benefit-tag">${b.icon || '🎁'} ${escapeHtml(b.title)}</span>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- 参与门店 -->
+          ${evt.stores ? `
+            <div class="card" style="padding:20px;margin-bottom:16px">
+              <div style="font-weight:600;font-size:14px;margin-bottom:10px">🏪 参与门店</div>
+              ${Object.entries(evt.stores).map(([city, stores]) => `
+                <div style="margin-bottom:10px">
+                  <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px">${city.toUpperCase()} ${city==='福州'?'FUZHOU':city==='莆田'?'PUTIAN':city==='龙岩'?'LONGYAN':city==='宁德'?'NINGDE':city==='厦门'?'XIAMEN':city==='泉州'?'QUANZHOU':'ZHANGZHOU'}</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:4px">
+                    ${stores.map(s => `<span style="font-size:11px;padding:2px 8px;background:var(--bg-input);border-radius:4px;color:var(--text-secondary)">${s}</span>`).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          <!-- 标签 -->
+          ${evt.tags?.length ? `
+            <div style="margin-top:12px;display:flex;gap:4px;flex-wrap:wrap">
+              ${evt.tags.map(tag => `<span class="tag-chip">#${tag}</span>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 右侧：操作面板 -->
+        <div>
+          <div class="card" style="padding:18px;position:sticky;top:20px">
+            <div style="font-weight:600;font-size:14px;margin-bottom:14px">⚡ 操作面板</div>
+            
+            <!-- 发布状态 -->
+            <div style="padding:12px;background:var(--bg-input);border-radius:var(--radius-sm);margin-bottom:14px;text-align:center">
+              <div style="font-size:11px;color:var(--text-secondary)">当前状态</div>
+              <div style="font-weight:700;color:${statusInfo.color};margin-top:2px">${statusInfo.label}</div>
+            </div>
+
+            <!-- 核心操作 -->
+            <div class="share-btn-grid" style="margin-bottom:14px">
+              <button class="btn btn-primary" onclick="publishEvent('${evt.id}')" style="justify-content:center;padding:10px">
+                🚀 发布活动
+              </button>
+              <button class="btn btn-outline" onclick="showEventQrCode('${evt.id}')" style="justify-content:center;padding:10px">
+                📱 生成二维码
+              </button>
+            </div>
+
+            <div class="share-btn-grid" style="margin-bottom:14px">
+              <button class="btn btn-outline" onclick="editEvent('${evt.id}')" style="justify-content:center;padding:10px">
+                ✏️ 编辑
+              </button>
+              <button class="btn btn-outline" onclick="deleteEventConfirm('${evt.id}')" style="justify-content:center;padding:10px;color:var(--red)">
+                🗑 删除
+              </button>
+            </div>
+
+            <!-- 二维码预览区 -->
+            <div id="eventQrPreviewArea" style="display:none;margin-top:14px;padding:14px;background:var(--bg-input);border-radius:var(--radius-sm)">
+              <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">二维码预览</div>
+              <img id="eventQrPreviewImg" src="" class="qr-code-img" />
+              <div style="font-size:11px;color:var(--text-muted);margin-top:8px">扫码即可在朋友圈/社群中分享此活动</div>
+            </div>
+
+            <!-- 元信息 -->
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--text-muted);line-height:1.8">
+                <div>ID: ${evt.id}</div>
+                <div>创建: ${evt.createdAt?.slice(0,19)||'N/A'}</div>
+                <div>更新: ${evt.updatedAt?.slice(0,19)||'N/A'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderEventTemplates(container) {
+  eventsState.currentView = 'template';
+  const { templates, types } = eventsState;
+
+  container.innerHTML = `
+    <div style="padding:24px;max-width:1100px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button class="btn btn-ghost btn-sm" onclick="eventsState.currentView='list';renderEvents()">← 返回</button>
+        <h2 style="font-size:20px;font-weight:700">📋 活动模板库</h2>
+        <span style="font-size:13px;color:var(--text-secondary)">选择模板快速创建活动</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+        ${templates.map(tpl => {
+          const typeInfo = types.find(t => t.id === tpl.type) || {};
+          return `
+            <div class="card" style="padding:20px;cursor:pointer;border-left:4px solid ${typeInfo.color};position:relative"
+                 onclick="cloneFromTemplate('${tpl.id}')">
+              <div style="position:absolute;top:12px;right:12px;font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(255,215,0,.15);color:var(--gold)">模板</div>
+              
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <span style="font-size:32px">${typeInfo.icon}</span>
+                <div>
+                  <div style="font-weight:700;font-size:15px">${escapeHtml(tpl.title)}</div>
+                  <div style="font-size:11px;color:var(--accent)">${typeInfo.name}</div>
+                </div>
+              </div>
+
+              <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;margin-bottom:10px">${escapeHtml(tpl.subtitle?.slice(0,80))}</div>
+
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+                ${(tpl.tags||[]).slice(0,4).map(tag => `<span class="tag-chip">#${tag}</span>`).join('')}
+              </div>
+
+              <div style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:12px">
+                <span>📅 ${tpl.startDate}</span>
+                <span>📍 ${escapeHtml(tpl.location)}</span>
+                ${tpl.benefits?.length ? `<span>🎁 ${tpl.benefits.length}项福利</span>` : ''}
+              </div>
+
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--accent);font-weight:600">
+                点击使用此模板 →
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ========== 活动交互函数 ==========
+
+function selectEventType(btn, typeId) {
+  document.querySelectorAll('.event-type-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('eventType').value = typeId;
+}
+
+function createEventFromType(typeId) {
+  eventsState.currentView = 'create';
+  renderEvents();
+  // 设置类型
+  setTimeout(() => {
+    document.querySelectorAll('.event-type-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.type === typeId);
+    });
+    const typeInput = document.getElementById('eventType');
+    if (typeInput) typeInput.value = typeId;
+  }, 50);
+}
+
+async function handleEventSubmit(e) {
+  e.preventDefault();
+  
+  const benefitsText = document.getElementById('eventBenefits').value.trim();
+  const benefits = benefitsText ? benefitsText.split('\n').filter(l => l.trim()).map(line => {
+    const iconMatch = line.match(/^(\S+)\s+(.+)$/);
+    return iconMatch ? { icon: iconMatch[1], title: iconMatch[2] } : { icon: '🎁', title: line };
+  }) : [];
+
+  const storesText = document.getElementById('eventStores').value.trim();
+  let stores = null;
+  if (storesText) {
+    stores = {};
+    storesText.split('\n').filter(l => l.trim()).forEach(line => {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        const city = parts[0];
+        const storeName = parts.slice(1).join(' ');
+        if (!stores[city]) stores[city] = [];
+        stores[city].push(storeName);
+      }
+    });
+  }
+
+  const tagsStr = document.getElementById('eventTags').value.trim();
+  const tags = tagsStr ? tagsStr.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
+
+  const eventData = {
+    type: document.getElementById('eventType').value,
+    title: document.getElementById('eventTitle').value.trim(),
+    subtitle: document.getElementById('eventSubtitle').value.trim(),
+    startDate: document.getElementById('eventStartDate').value,
+    endDate: document.getElementById('eventEndDate').value,
+    location: document.getElementById('eventLocation').value.trim(),
+    description: document.getElementById('eventDescription').value.trim(),
+    benefits,
+    stores,
+    tags,
+    shareText: document.getElementById('eventShareText').value.trim()
+  };
+
+  try {
+    const res = await fetch('/api/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(eventData)
+    });
+    const result = await res.json();
+    if (result.success) {
+      eventsState.currentEvent = result.data;
+      eventsState.currentView = 'detail';
+      renderEvents();
+    } else {
+      alert('创建失败: ' + (result.error || '未知错误'));
+    }
+  } catch (err) {
+    alert('网络错误: ' + err.message);
+  }
+}
+
+async function cloneFromTemplate(templateId) {
+  try {
+    const res = await fetch('/api/events/clone-template', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templateId })
+    });
+    const result = await res.json();
+    if (result.success) {
+      eventsState.currentEvent = result.data;
+      eventsState.currentView = 'detail';
+      renderEvents();
+    } else {
+      alert('克隆失败: ' + (result.error || '未知错误'));
+    }
+  } catch (err) {
+    alert('网络错误: ' + err.message);
+  }
+}
+
+function openEventDetail(eventId) {
+  const evt = eventsState.list.find(e => e.id === eventId);
+  if (evt) {
+    eventsState.currentEvent = evt;
+    eventsState.currentView = 'detail';
+    renderEvents();
+  }
+}
+
+async function publishEvent(eventId) {
+  try {
+    const res = await fetch('/api/events/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: eventId })
+    });
+    const result = await res.json();
+    if (result.success) {
+      // 更新本地状态
+      const idx = eventsState.list.findIndex(e => e.id === eventId);
+      if (idx !== -1) eventsState.list[idx] = result.data;
+      if (eventsState.currentEvent?.id === eventId) eventsState.currentEvent = result.data;
+      alert('✅ 活动已发布！');
+      renderEvents();
+    } else {
+      alert('发布失败: ' + (result.error || '未知错误'));
+    }
+  } catch (err) {
+    alert('网络错误: ' + err.message);
+  }
+}
+
+async function showEventQrCode(eventId) {
+  const evt = eventsState.list.find(e => e.id === eventId) || eventsState.currentEvent;
+  if (!evt) return;
+
+  // 构建分享文本
+  const shareText = evt.shareText || `${evt.title}\n${evt.subtitle || ''}\n\n📅 ${evt.startDate}\n📍 ${evt.location}`;
+  
+  // 显示加载中的弹窗
+  const overlay = document.createElement('div');
+  overlay.className = 'qr-modal-overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="qr-modal-content">
+      <div style="font-size:40px;margin-bottom:8px">📱</div>
+      <div style="font-weight:700;font-size:16px;margin-bottom:4px">活动分享二维码</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">${escapeHtml(evt.title)}</div>
+      <div id="qrLoadingSpinner" style="padding:20px">正在生成二维码...</div>
+      <img id="modalQrImage" src="" class="qr-code-img" style="display:none" />
+      <div id="qrShareInfo" style="display:none">
+        <div style="font-size:12px;color:var(--text-secondary);margin:14px 0 8px;text-align:left;line-height:1.6">
+          💡 <strong>使用方式：</strong><br/>
+          1. 长按保存二维码图片<br/>
+          2. 发送到微信朋友圈或 TWO GIRLS 社群<br/>
+          3. 扫码即可查看活动详情
+        </div>
+        <div class="share-btn-grid">
+          <button class="btn btn-outline btn-sm" onclick="downloadQrCode(this)" data-event-id="${eventId}">💾 保存图片</button>
+          <button class="btn btn-primary btn-sm" onclick="closeQrModal(this)">关闭</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  try {
+    const res = await fetch('/api/events/qrcode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId, text: `https://twogirls.brew/event/${eventId.replace('event_','')}`, size: 300 })
+    });
+    const result = await res.json();
+    
+    document.getElementById('qrLoadingSpinner').style.display = 'none';
+    if (result.success && result.data.qrDataUrl) {
+      const img = document.getElementById('modalQrImage');
+      img.src = result.data.qrDataUrl;
+      img.style.display = 'block';
+      document.getElementById('qrShareInfo').style.display = 'block';
+      
+      // 同时更新详情页的预览
+      const previewArea = document.getElementById('eventQrPreviewArea');
+      if (previewArea) {
+        previewArea.style.display = 'block';
+        const previewImg = document.getElementById('eventQrPreviewImg');
+        if (previewImg) { previewImg.src = result.data.qrDataUrl; }
+      }
+    } else {
+      document.getElementById('qrLoadingSpinner').innerHTML = '<span style="color:var(--red)">生成失败</span>';
+    }
+  } catch (err) {
+    document.getElementById('qrLoadingSpinner').innerHTML = '<span style="color:var(--red)">网络错误</span>';
+  }
+}
+
+function downloadQrCode(btn) {
+  const modal = btn.closest('.qr-modal-content');
+  const img = modal?.querySelector('#modalQrImage');
+  if (!img || !img.src) return;
+  const link = document.createElement('a');
+  link.download = 'twogirls-event-qrcode.png';
+  link.href = img.src;
+  link.click();
+}
+
+function closeQrModal(btn) {
+  const overlay = btn.closest('.qr-modal-overlay');
+  if (overlay) overlay.remove();
+}
+
+function editEvent(eventId) {
+  const evt = eventsState.list.find(e => e.id === eventId) || eventsState.currentEvent;
+  if (!evt) return;
+  eventsState.editingEvent = evt;
+  eventsState.currentView = 'create';
+  renderEvents();
+  // 填充表单数据
+  setTimeout(() => {
+    const f = (id) => document.getElementById(id);
+    if (f('eventType')) f('eventType').value = evt.type || '';
+    if (f('eventTitle')) f('eventTitle').value = evt.title || '';
+    if (f('eventSubtitle')) f('eventSubtitle').value = evt.subtitle || '';
+    if (f('eventStartDate')) f('eventStartDate').value = evt.startDate || '';
+    if (f('eventEndDate')) f('eventEndDate').value = evt.endDate || '';
+    if (f('eventLocation')) f('eventLocation').value = evt.location || '';
+    if (f('eventDescription')) f('eventDescription').value = evt.description || '';
+    if (f('eventTags')) f('eventTags').value = (evt.tags||[]).join(', ');
+    if (f('eventShareText')) f('eventShareText').value = evt.shareText || '';
+    if (evt.benefits?.length) {
+      f('eventBenefits').value = evt.benefits.map(b => `${b.icon || '🎁'} ${b.title}`).join('\n');
+    }
+    if (evt.stores) {
+      const lines = [];
+      Object.entries(evt.stores).forEach(([city, stores]) => {
+        stores.forEach(s => lines.push(`${city} ${s}`));
+      });
+      f('eventStores').value = lines.join('\n');
+    }
+    // 更新类型选择UI
+    document.querySelectorAll('.event-type-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.type === evt.type);
+    });
+  }, 50);
+}
+
+async function deleteEvent(eventId) {
+  if (!confirm('确定要删除这个活动吗？')) return;
+  try {
+    const res = await fetch(`/api/events/${eventId}`, { method: 'DELETE' });
+    const result = await res.json();
+    if (result.success) {
+      eventsState.list = eventsState.list.filter(e => e.id !== eventId);
+      eventsState.currentView = 'list';
+      renderEvents();
+    }
+  } catch (e) {}
+}
+
+function deleteEventConfirm(eventId) {
+  const evt = eventsState.list.find(e => e.id === eventId) || eventsState.currentEvent;
+  if (!confirm(`确定要删除「${evt?.title || '此活动'}」吗？此操作不可恢复。`)) return;
+  deleteEvent(eventId);
+}
+
 </script>
+
 </body>
 </html>
