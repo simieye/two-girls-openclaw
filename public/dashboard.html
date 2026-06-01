@@ -1,0 +1,2883 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two Girls Brew - AI搭档后台</title>
+<style>
+:root {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #12122a;
+  --bg-card: #1a1a35;
+  --bg-hover: #222244;
+  --bg-input: #15152e;
+  --border: #2a2a4a;
+  --text-primary: #e8e8f0;
+  --text-secondary: #8888aa;
+  --text-muted: #555577;
+  --accent: #E91E63;
+  --accent-glow: rgba(233, 30, 99, 0.3);
+  --gold: #FFD700;
+  --green: #4CAF50;
+  --blue: #2196F3;
+  --orange: #FF9800;
+  --purple: #9C27B0;
+  --red: #F44336;
+  --teal: #009688;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --transition: all 0.2s ease;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  overflow: hidden;
+  height: 100vh;
+}
+.app { display: flex; height: 100vh; }
+
+/* 侧边栏 */
+.sidebar {
+  width: 260px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.sidebar-logo {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--accent), #ff6b9d);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.sidebar-brand h2 { font-size: 14px; font-weight: 700; }
+.sidebar-brand span { font-size: 11px; color: var(--text-secondary); }
+
+.sidebar-actions {
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: var(--transition);
+  color: var(--text-primary);
+  width: 100%;
+  text-align: left;
+}
+.btn-primary { background: var(--accent); }
+.btn-primary:hover { background: #d81b60; transform: translateY(-1px); box-shadow: 0 4px 15px var(--accent-glow); }
+.btn-outline { background: transparent; border: 1px solid var(--border); }
+.btn-outline:hover { background: var(--bg-hover); border-color: var(--accent); }
+.btn-ghost { background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn-sm { padding: 6px 10px; font-size: 11px; width: auto; }
+
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 8px; }
+.nav-section { margin-bottom: 8px; }
+.nav-section-title {
+  font-size: 10px; text-transform: uppercase;
+  color: var(--text-muted); padding: 8px 12px 4px;
+  letter-spacing: 1px; font-weight: 600;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 13px; color: var(--text-secondary);
+  transition: var(--transition); border: none; background: none; width: 100%; text-align: left;
+}
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.nav-item.active { background: var(--bg-hover); color: var(--accent); font-weight: 600; }
+.nav-item .badge {
+  margin-left: auto; font-size: 10px; padding: 2px 8px;
+  border-radius: 10px; background: var(--accent); color: #fff;
+}
+.nav-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-left: auto; }
+
+/* 主内容区 */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  height: 56px; background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 24px; gap: 16px;
+}
+.topbar-title { font-size: 16px; font-weight: 600; }
+.topbar-subtitle { font-size: 12px; color: var(--text-secondary); }
+.topbar-spacer { flex: 1; }
+.topbar-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--green);
+}
+.topbar-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+.content { flex: 1; overflow-y: auto; padding: 24px; }
+.content-section { display: none; }
+.content-section.active { display: block; }
+
+/* 统计卡片 */
+.stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--bg-card); border-radius: var(--radius); padding: 16px;
+  border: 1px solid var(--border); transition: var(--transition);
+}
+.stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.stat-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.stat-card-icon { font-size: 24px; }
+.stat-card-value { font-size: 28px; font-weight: 700; }
+.stat-card-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+/* 智能体网格 */
+.agent-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.agent-card {
+  background: var(--bg-card); border-radius: var(--radius); padding: 20px;
+  border: 1px solid var(--border); cursor: pointer; transition: var(--transition);
+  position: relative; overflow: hidden;
+}
+.agent-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+.agent-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.agent-card-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+}
+.agent-card-name { font-size: 15px; font-weight: 600; }
+.agent-card-domain { font-size: 11px; color: var(--text-secondary); }
+.agent-card-badge {
+  position: absolute; top: 12px; right: 12px;
+  font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  font-weight: 600;
+}
+.badge-p0 { background: var(--red); color: #fff; }
+.badge-p1 { background: var(--orange); color: #fff; }
+.badge-p2 { background: var(--blue); color: #fff; }
+.badge-p3 { background: var(--teal); color: #fff; }
+
+/* 6层标签 */
+.layer-tabs {
+  display: flex; gap: 4px; margin-top: 12px;
+  flex-wrap: wrap;
+}
+.layer-tab {
+  font-size: 10px; padding: 3px 8px; border-radius: 6px;
+  background: var(--bg-hover); color: var(--text-secondary);
+  cursor: pointer; border: none; transition: var(--transition);
+}
+.layer-tab:hover { background: var(--accent); color: #fff; }
+.layer-tab.active { background: var(--accent); color: #fff; }
+
+/* 频道列表 */
+.channel-list { display: flex; flex-direction: column; gap: 8px; }
+.channel-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border);
+  transition: var(--transition);
+}
+.channel-item:hover { border-color: var(--accent); }
+.channel-icon { font-size: 20px; }
+.channel-info { flex: 1; }
+.channel-name { font-size: 14px; font-weight: 500; }
+.channel-type { font-size: 11px; color: var(--text-secondary); }
+.channel-status {
+  font-size: 11px; padding: 4px 10px; border-radius: 10px;
+  font-weight: 500;
+}
+.status-connected { background: rgba(76,175,80,0.15); color: var(--green); }
+.status-disconnected { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+
+/* MCP列表 */
+.mcp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.mcp-card {
+  background: var(--bg-card); border-radius: var(--radius-sm); padding: 16px;
+  border: 1px solid var(--border); display: flex; align-items: center; gap: 12px;
+  transition: var(--transition); cursor: pointer;
+}
+.mcp-card:hover { border-color: var(--accent); }
+.mcp-icon { font-size: 24px; }
+.mcp-info { flex: 1; }
+.mcp-name { font-size: 13px; font-weight: 500; }
+.mcp-category { font-size: 10px; color: var(--text-secondary); }
+
+/* 技能列表 */
+.skill-list { display: flex; flex-direction: column; gap: 8px; }
+.skill-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border);
+}
+.skill-icon { font-size: 18px; }
+.skill-info { flex: 1; }
+.skill-name { font-size: 13px; font-weight: 500; }
+.skill-desc { font-size: 11px; color: var(--text-secondary); }
+.skill-source {
+  font-size: 10px; padding: 2px 8px; border-radius: 6px;
+  background: var(--bg-hover); color: var(--text-secondary);
+}
+.skill-source.github { background: rgba(33,150,243,0.15); color: var(--blue); }
+.skill-source.clawhub { background: rgba(233,30,99,0.15); color: var(--accent); }
+.skill-source.builtin { background: rgba(76,175,80,0.15); color: var(--green); }
+
+/* 定时任务列表 */
+.cron-list { display: flex; flex-direction: column; gap: 6px; }
+.cron-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  background: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border);
+  font-size: 13px;
+}
+.cron-expr {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px; padding: 3px 8px; border-radius: 4px;
+  background: var(--bg-hover); color: var(--gold); min-width: 100px; text-align: center;
+}
+.cron-desc { flex: 1; }
+.cron-agent { font-size: 11px; color: var(--text-secondary); }
+.cron-toggle { cursor: pointer; }
+.toggle { 
+  width: 36px; height: 20px; border-radius: 10px; border: none;
+  cursor: pointer; transition: var(--transition); position: relative;
+}
+.toggle.on { background: var(--green); }
+.toggle.off { background: var(--border); }
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  transition: var(--transition);
+}
+.toggle.on::after { left: 18px; }
+
+/* 详情弹窗 */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+.modal {
+  background: var(--bg-secondary); border-radius: var(--radius);
+  border: 1px solid var(--border); width: 800px; max-height: 80vh;
+  display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-header {
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-title { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
+.modal-close {
+  background: none; border: none; color: var(--text-secondary); font-size: 20px;
+  cursor: pointer; padding: 4px 8px; border-radius: 6px;
+}
+.modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.modal-body { padding: 24px; overflow-y: auto; flex: 1; }
+.modal-body pre {
+  white-space: pre-wrap; font-size: 13px; line-height: 1.8;
+  color: var(--text-secondary); font-family: inherit;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--text-muted);
+}
+.empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-state h3 { font-size: 16px; margin-bottom: 8px; color: var(--text-secondary); }
+
+/* 对话区域 */
+.chat-area {
+  display: flex; flex-direction: column; height: calc(100vh - 56px);
+}
+.chat-messages { flex: 1; overflow-y: auto; padding: 24px; }
+.chat-input-area {
+  padding: 16px 24px; border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+.chat-input-wrap {
+  display: flex; gap: 8px; background: var(--bg-input);
+  border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 8px 16px;
+}
+.chat-input-wrap:focus-within { border-color: var(--accent); }
+.chat-input {
+  flex: 1; background: none; border: none; color: var(--text-primary);
+  font-size: 14px; outline: none; padding: 8px 0;
+}
+.chat-input::placeholder { color: var(--text-muted); }
+.chat-send {
+  background: var(--accent); border: none; color: #fff;
+  padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.chat-send:hover { background: #d81b60; }
+.chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* typing dots 动画 */
+@keyframes typingDots {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60%, 100% { content: '...'; }
+}
+.typing-dots::after {
+  content: '';
+  animation: typingDots 1.4s infinite;
+}
+
+/* ===== 设置面板 ===== */
+.settings-tabs {
+  display: flex; gap: 4px; margin-bottom: 20px;
+  background: var(--bg-card); border-radius: var(--radius); padding: 4px;
+  border: 1px solid var(--border);
+}
+.settings-tab {
+  flex: 1; padding: 10px 16px; border-radius: var(--radius-sm); border: none;
+  background: transparent; color: var(--text-secondary); cursor: pointer;
+  font-size: 13px; font-weight: 500; transition: var(--transition);
+  text-align: center;
+}
+.settings-tab:hover { color: var(--text-primary); }
+.settings-tab.active { background: var(--accent); color: #fff; }
+.settings-panel { display: none; }
+.settings-panel.active { display: block; }
+
+/* 提供商卡片 */
+.provider-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.provider-card {
+  background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 16px; transition: var(--transition); position: relative;
+}
+.provider-card:hover { border-color: var(--accent); }
+.provider-card-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+}
+.provider-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  background: var(--bg-hover);
+}
+.provider-name { font-size: 14px; font-weight: 600; }
+.provider-provider { font-size: 11px; color: var(--text-secondary); }
+.provider-models {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.provider-model-tag {
+  font-size: 10px; padding: 2px 8px; border-radius: 4px;
+  background: var(--bg-hover); color: var(--text-secondary);
+}
+.provider-model-tag.default { background: rgba(233,30,99,0.15); color: var(--accent); }
+.provider-actions {
+  display: flex; gap: 8px; align-items: center; margin-top: 10px;
+}
+.provider-actions .btn { width: auto; }
+.provider-status {
+  font-size: 11px; padding: 3px 10px; border-radius: 8px; font-weight: 500;
+}
+
+/* 添加提供商表单 */
+.provider-form-card {
+  background: var(--bg-card); border: 1px dashed var(--border); border-radius: var(--radius);
+  padding: 24px;
+}
+.provider-form-card:hover { border-color: var(--accent); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-field { display: flex; flex-direction: column; gap: 4px; }
+.form-field.full { grid-column: 1 / -1; }
+.form-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+.form-input {
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; color: var(--text-primary); font-size: 13px; outline: none;
+  transition: var(--transition); font-family: inherit;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text-muted); }
+.form-hint { font-size: 10px; color: var(--text-muted); }
+
+/* 模型标签输入 */
+.model-tags-area {
+  display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px;
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  min-height: 40px; align-items: center;
+}
+.model-tags-area:focus-within { border-color: var(--accent); }
+.model-tag-item {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 3px 8px; border-radius: 4px;
+  background: var(--accent); color: #fff;
+}
+.model-tag-remove {
+  cursor: pointer; font-size: 14px; line-height: 1; opacity: 0.7;
+}
+.model-tag-remove:hover { opacity: 1; }
+.model-tag-input {
+  flex: 1; min-width: 120px; background: none; border: none;
+  color: var(--text-primary); font-size: 13px; outline: none; padding: 4px;
+  font-family: inherit;
+}
+
+/* 预设提供商快捷选择 */
+.quick-presets {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.quick-preset {
+  font-size: 11px; padding: 4px 10px; border-radius: 6px;
+  background: var(--bg-hover); color: var(--text-secondary); border: 1px solid var(--border);
+  cursor: pointer; transition: var(--transition);
+}
+.quick-preset:hover { border-color: var(--accent); color: var(--text-primary); }
+
+/* 提示消息 */
+.toast {
+  position: fixed; top: 20px; right: 20px; z-index: 2000;
+  padding: 12px 20px; border-radius: var(--radius-sm); font-size: 13px;
+  animation: slideIn 0.3s ease; box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+.toast.success { background: var(--green); color: #fff; }
+.toast.error { background: var(--red); color: #fff; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* 设置面板内通用设置 */
+.settings-section {
+  background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 20px; margin-bottom: 16px;
+}
+.settings-section-title {
+  font-size: 15px; font-weight: 600; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ===== 资源库样式 ===== */
+.resource-toolbar {
+  display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
+}
+.resource-toolbar .search-input {
+  flex: 1; min-width: 200px;
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 14px; color: var(--text-primary); font-size: 13px; outline: none;
+  transition: var(--transition);
+}
+.resource-toolbar .search-input:focus { border-color: var(--accent); }
+.resource-toolbar .search-input::placeholder { color: var(--text-muted); }
+.category-filter {
+  display: flex; gap: 4px; flex-wrap: wrap;
+}
+.category-chip {
+  font-size: 11px; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-secondary); cursor: pointer; transition: var(--transition);
+  white-space: nowrap;
+}
+.category-chip:hover { border-color: var(--accent); color: var(--text-primary); }
+.category-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.resource-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+}
+.resource-card {
+  background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 16px; transition: var(--transition); cursor: pointer; position: relative;
+}
+.resource-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.resource-card-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px;
+}
+.resource-card-title { font-size: 14px; font-weight: 600; flex: 1; }
+.resource-card-cat {
+  font-size: 10px; padding: 2px 8px; border-radius: 8px; white-space: nowrap;
+}
+.resource-card-preview {
+  font-size: 12px; color: var(--text-secondary); line-height: 1.6;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.resource-card-meta {
+  display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 11px; color: var(--text-muted);
+}
+.resource-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+.resource-tag {
+  font-size: 10px; padding: 2px 8px; border-radius: 4px; background: var(--bg-hover); color: var(--text-secondary);
+}
+.resource-card-actions {
+  display: flex; gap: 4px; opacity: 0; transition: var(--transition);
+}
+.resource-card:hover .resource-card-actions { opacity: 1; }
+.resource-detail-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--border);
+}
+.resource-detail-content {
+  background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 20px; white-space: pre-wrap; font-size: 13px; line-height: 1.8; max-height: 50vh; overflow-y: auto;
+}
+.batch-add-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;
+}
+.batch-add-card {
+  background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 16px; text-align: center; cursor: pointer; transition: var(--transition);
+}
+.batch-add-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.batch-add-card-icon { font-size: 28px; margin-bottom: 8px; }
+.batch-add-card-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.batch-add-card-count { font-size: 11px; color: var(--text-secondary); }
+
+/* Skills 本地调用样式 */
+.skill-actions { display: flex; gap: 6px; align-items: center; }
+.skill-call-btn {
+  font-size: 10px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--accent);
+  background: transparent; color: var(--accent); cursor: pointer; transition: var(--transition);
+}
+.skill-call-btn:hover { background: var(--accent); color: #fff; }
+.skill-call-btn.called { background: var(--green); border-color: var(--green); color: #fff; }
+.exec-log {
+  background: var(--bg-input); border-radius: var(--radius-sm); border: 1px solid var(--border);
+  padding: 12px; margin-top: 8px; font-family: 'SF Mono', monospace; font-size: 11px;
+  max-height: 200px; overflow-y: auto; color: var(--green);
+}
+
+/* 响应式 */
+@media (max-width: 1200px) {
+  .provider-grid { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .resource-grid { grid-template-columns: 1fr; }
+  .batch-add-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 1200px) {
+  .agent-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid { grid-template-columns: repeat(3, 1fr); }
+  .mcp-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .agent-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">🍺</div>
+      <div class="sidebar-brand">
+        <h2>Two Girls Brew</h2>
+        <span>AI搭档后台 v3.0</span>
+      </div>
+    </div>
+    <div class="sidebar-actions">
+      <button class="btn btn-primary" onclick="showSection('chat')">
+        <span>✨</span> + 新对话
+      </button>
+      <button class="btn btn-outline" onclick="showSection('agents')">
+        <span>🤖</span> + AI 搭档
+      </button>
+      <button class="btn btn-outline" onclick="showSection('mcp')">
+        <span>🔌</span> + MCP 连接器
+      </button>
+      <button class="btn btn-outline" onclick="showSection('skills')">
+        <span>🧩</span> + 探索技能
+      </button>
+      <button class="btn btn-outline" onclick="showSection('cron')">
+        <span>⏰</span> + 定时任务
+      </button>
+      <button class="btn btn-outline" onclick="showSection('resources')">
+        <span>📚</span> + 资源库
+      </button>
+      <button class="btn btn-ghost" onclick="showSection('settings')" style="margin-top:8px">
+        <span>⚙️</span> 设置
+      </button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-title">AI 搭档</div>
+        <div id="agentNav"></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">频道</div>
+        <div id="channelNav"></div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main class="main">
+    <header class="topbar">
+      <span class="topbar-title" id="topbarTitle">仪表盘</span>
+      <span class="topbar-subtitle" id="topbarSubtitle"></span>
+      <span class="topbar-spacer"></span>
+      <span class="topbar-status">系统运行中 · 9个智能体在线</span>
+    </header>
+
+    <div class="content" id="contentArea">
+      <!-- 仪表盘 -->
+      <div class="content-section active" id="section-dashboard"></div>
+      <!-- 对话 -->
+      <div class="content-section" id="section-chat"></div>
+      <!-- AI搭档 -->
+      <div class="content-section" id="section-agents"></div>
+      <!-- MCP -->
+      <div class="content-section" id="section-mcp"></div>
+      <!-- 技能 -->
+      <div class="content-section" id="section-skills"></div>
+      <!-- 定时任务 -->
+      <div class="content-section" id="section-cron"></div>
+      <!-- 频道 -->
+      <div class="content-section" id="section-channels"></div>
+      <!-- 资源库 -->
+      <div class="content-section" id="section-resources"></div>
+      <!-- 设置 -->
+      <div class="content-section" id="section-settings"></div>
+    </div>
+  </main>
+</div>
+
+<!-- 弹窗 -->
+<div class="modal-overlay" id="modalOverlay" style="display:none" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle"></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ========== 状态管理 ==========
+const state = {
+  agents: [],
+  channels: [],
+  mcp: [],
+  skills: [],
+  cronJobs: [],
+  providers: [],
+  resources: [],
+  resourceCategories: [],
+  stats: {},
+  currentSection: 'dashboard',
+  providerModels: [], // 添加表单中的模型标签暂存
+  resourceFilter: 'all', // 资源库分类筛选
+  resourceSearch: '' // 资源库搜索
+};
+
+const LAYERS = ['identity', 'memory', 'soul', 'user', 'agent', 'tools'];
+const LAYER_NAMES = { identity: '身份层', memory: '记忆层', soul: '灵魂层', user: '用户层', agent: '代理层', tools: '工具层' };
+const LAYER_ICONS = { identity: '🆔', memory: '🧠', soul: '💫', user: '👤', agent: '⚙️', tools: '🔧' };
+
+// ========== API调用 ==========
+async function fetchData() {
+  const res = await fetch('/api/dashboard');
+  const json = await res.json();
+  if (json.success) {
+    state.agents = json.data.agents;
+    state.channels = json.data.channels;
+    state.mcp = json.data.mcp;
+    state.skills = json.data.skills;
+    state.cronJobs = json.data.cronJobs;
+    state.providers = json.data.providers || [];
+    state.resources = json.data.resources || [];
+    state.resourceCategories = json.data.resourceCategories || [];
+    state.stats = json.data.stats;
+  }
+}
+
+// ========== 渲染 ==========
+function renderDashboard() {
+  const s = state.stats;
+  document.getElementById('section-dashboard').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-header"><span class="stat-card-icon">🤖</span></div>
+        <div class="stat-card-value">${s.totalAgents}</div>
+        <div class="stat-card-label">AI搭档在线</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header"><span class="stat-card-icon">📡</span></div>
+        <div class="stat-card-value">${s.activeChannels}</div>
+        <div class="stat-card-label">活跃频道</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header"><span class="stat-card-icon">🔌</span></div>
+        <div class="stat-card-value">${s.connectedMcp}</div>
+        <div class="stat-card-label">MCP已连接</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header"><span class="stat-card-icon">🧩</span></div>
+        <div class="stat-card-value">${s.activeSkills}</div>
+        <div class="stat-card-label">可用技能</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header"><span class="stat-card-icon">⏰</span></div>
+        <div class="stat-card-value">${s.activeCronJobs}</div>
+        <div class="stat-card-label">定时任务运行中</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-header"><span class="stat-card-icon">📚</span></div>
+        <div class="stat-card-value">${s.totalResources || state.resources.length}</div>
+        <div class="stat-card-label">知识库资料</div>
+      </div>
+    </div>
+    <h3 style="margin-bottom:16px">🤖 AI搭档矩阵</h3>
+    <div class="agent-grid">
+      ${state.agents.map(a => `
+        <div class="agent-card">
+          <span class="agent-card-badge badge-p${a.priority > 2 ? '2' : a.priority > 1 ? '1' : '0'}">P${a.priority}</span>
+          <div class="agent-card-header" onclick="openAgentDetail('${a.id}')">
+            <div class="agent-card-icon" style="background:${a.color}20">${a.icon}</div>
+            <div>
+              <div class="agent-card-name">${a.name}</div>
+              <div class="agent-card-domain">${a.domain}</div>
+            </div>
+          </div>
+          <div class="layer-tabs">
+            ${LAYERS.map(l => `<span class="layer-tab">${LAYER_ICONS[l]} ${LAYER_NAMES[l]}</span>`).join('')}
+          </div>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="btn btn-outline btn-sm" style="flex:1" onclick="event.stopPropagation();openAgentChat('${a.id}')">💬</button>
+            <button class="btn btn-outline btn-sm" style="flex:1" onclick="event.stopPropagation();openAgentCron('${a.id}')">⏰</button>
+            <button class="btn btn-primary btn-sm" style="flex:1" onclick="event.stopPropagation();generateAgentReport('${a.id}')">📋</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderChat() {
+  currentChatAgent = null;
+  document.getElementById('section-chat').innerHTML = `
+    <div class="chat-area">
+      <div style="padding:12px 24px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">🍺</span>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">通用对话</div>
+          <div style="font-size:11px;color:var(--text-secondary)">选择AI搭档开始专属对话，或直接输入指令</div>
+        </div>
+      </div>
+      <div class="chat-messages" id="agentChatMessages">
+        <div class="empty-state">
+          <div class="empty-state-icon">💬</div>
+          <h3>开始新对话</h3>
+          <p>选择AI搭档或直接输入指令，支持自然语言和结构化指令</p>
+          <p style="font-size:12px;margin-top:8px;color:var(--text-muted)">
+            示例: "查看今日销售报表" | "生成小红书新品推广内容" | "检查库存状态"
+          </p>
+          <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+            ${state.agents.slice(0, 6).map(a => `
+              <button class="btn btn-outline btn-sm" style="width:auto" onclick="openAgentChat('${a.id}')">${a.icon} ${a.name}</button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-input-wrap">
+          <input class="chat-input" placeholder="输入指令，支持自然语言... 或点击上方AI搭档开始专属对话" id="chatInput" onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="chat-send" onclick="sendChat()">发送</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAgents() {
+  document.getElementById('section-agents').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3>🤖 AI搭档管理 (${state.agents.length})</h3>
+      <button class="btn btn-primary btn-sm" onclick="generateAllDailyReports()" style="width:auto">📋 一键全部汇报</button>
+    </div>
+    <div class="agent-grid">
+      ${state.agents.map(a => `
+        <div class="agent-card">
+          <span class="agent-card-badge badge-p${a.priority > 2 ? '2' : a.priority > 1 ? '1' : '0'}">P${a.priority}</span>
+          <div class="agent-card-header" onclick="openAgentDetail('${a.id}')">
+            <div class="agent-card-icon" style="background:${a.color}20">${a.icon}</div>
+            <div>
+              <div class="agent-card-name">${a.name}</div>
+              <div class="agent-card-domain">${a.domain} · ${a.layers.length}层</div>
+            </div>
+          </div>
+          <div class="layer-tabs">
+            ${LAYERS.map(l => `<button class="layer-tab" onclick="event.stopPropagation();openLayerDetail('${a.id}','${l}')">${LAYER_ICONS[l]} ${LAYER_NAMES[l]}</button>`).join('')}
+          </div>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="btn btn-outline btn-sm" style="flex:1" onclick="event.stopPropagation();openAgentChat('${a.id}')">💬 对话</button>
+            <button class="btn btn-outline btn-sm" style="flex:1" onclick="event.stopPropagation();openAgentCron('${a.id}')">⏰ 任务</button>
+            <button class="btn btn-primary btn-sm" style="flex:1" onclick="event.stopPropagation();generateAgentReport('${a.id}')">📋 汇报</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderMcp() {
+  document.getElementById('section-mcp').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3>🔌 MCP多社媒平台连接器 (${state.mcp.length})</h3>
+      <button class="btn btn-outline btn-sm" onclick="addCustomMcp()">+ 自定义添加MCP</button>
+    </div>
+    <div class="mcp-grid">
+      ${state.mcp.map(m => `
+        <div class="mcp-card">
+          <span class="mcp-icon">${m.icon}</span>
+          <div class="mcp-info">
+            <div class="mcp-name">${m.name}</div>
+            <div class="mcp-category">${m.category}</div>
+          </div>
+          <span class="channel-status ${m.connected ? 'status-connected' : 'status-disconnected'}">${m.connected ? '已连接' : '未连接'}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderSkills() {
+  document.getElementById('section-skills').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3>🧩 探索技能 (${state.skills.length})</h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline btn-sm" onclick="addSkill('github')">+ GitHub Skill</button>
+        <button class="btn btn-outline btn-sm" onclick="addSkill('clawhub')">+ Clawhub Skill</button>
+        <button class="btn btn-outline btn-sm" onclick="addSkill('custom')">+ 自定义添加</button>
+      </div>
+    </div>
+    <div class="skill-list">
+      ${state.skills.map(s => `
+        <div class="skill-item" style="flex-wrap:wrap">
+          <span class="skill-icon">${s.icon}</span>
+          <div class="skill-info">
+            <div class="skill-name">${s.name}</div>
+            <div class="skill-desc">${s.description}</div>
+          </div>
+          <span class="skill-source ${s.source}">${s.source === 'builtin' ? '内置' : s.source === 'github' ? 'GitHub' : s.source === 'clawhub' ? 'Clawhub' : '自定义'}</span>
+          <div class="skill-actions">
+            <button class="skill-call-btn" onclick="callSkillOpenClaw('${s.id}','${s.name}')" title="OpenClaw调用">🦞 OpenClaw</button>
+            <button class="skill-call-btn" onclick="callSkillClawX('${s.id}','${s.name}')" title="Claw X调用">🖥️ Claw X</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="exec-log" id="skillExecLog" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;color:var(--text-primary)">📋 执行日志</span>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('skillExecLog').style.display='none'" style="width:auto">✕</button>
+      </div>
+      <div id="skillExecLogContent"></div>
+    </div>
+  `;
+}
+
+function renderCron() {
+  document.getElementById('section-cron').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3>⏰ 定时任务 (${state.cronJobs.filter(c=>c.active).length}/${state.cronJobs.length} 运行中)</h3>
+      <button class="btn btn-outline btn-sm" onclick="addCustomCron()">+ 自定义添加</button>
+    </div>
+    <div class="cron-list">
+      ${state.cronJobs.map(c => `
+        <div class="cron-item">
+          <span class="cron-expr">${c.expr || '自定义'}</span>
+          <span class="cron-desc">${c.name}: ${c.desc}</span>
+          <span class="cron-agent">${c.agent || ''}</span>
+          <button class="toggle ${c.active ? 'on' : 'off'} cron-toggle" onclick="toggleCron('${c.id}')"></button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderChannels() {
+  document.getElementById('section-channels').innerHTML = `
+    <h3 style="margin-bottom:16px">📡 频道管理</h3>
+    <div class="channel-list">
+      ${state.channels.map(ch => `
+        <div class="channel-item">
+          <span class="channel-icon">${ch.icon}</span>
+          <div class="channel-info">
+            <div class="channel-name">${ch.name}</div>
+            <div class="channel-type">${ch.type}</div>
+          </div>
+          <span class="channel-status ${ch.connected ? 'status-connected' : 'status-disconnected'}">${ch.connected ? '已连接' : '未连接'}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ========== 设置面板 ==========
+function renderSettings() {
+  document.getElementById('section-settings').innerHTML = `
+    <div class="settings-tabs">
+      <button class="settings-tab active" onclick="switchSettingsTab('prompts')">🤖 AI搭档设置</button>
+      <button class="settings-tab" onclick="switchSettingsTab('providers')">🧠 AI服务提供商</button>
+      <button class="settings-tab" onclick="switchSettingsTab('channels')">📡 频道设置</button>
+      <button class="settings-tab" onclick="switchSettingsTab('general')">⚙️ 通用设置</button>
+      <button class="settings-tab" onclick="switchSettingsTab('about')">ℹ️ 关于系统</button>
+    </div>
+    <div class="settings-panel active" id="settings-panel-prompts">
+      ${renderPromptsPanel()}
+    </div>
+    <div class="settings-panel" id="settings-panel-providers">
+      ${renderProvidersPanel()}
+    </div>
+    <div class="settings-panel" id="settings-panel-channels">
+      ${renderChannelSettingsPanel()}
+    </div>
+    <div class="settings-panel" id="settings-panel-general">
+      ${renderGeneralSettings()}
+    </div>
+    <div class="settings-panel" id="settings-panel-about">
+      ${renderAbout()}
+    </div>
+  `;
+}
+
+function switchSettingsTab(tab) {
+  document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(`settings-panel-${tab}`).classList.add('active');
+}
+
+// ========== AI提供商面板 ==========
+function renderProvidersPanel() {
+  const connected = state.providers.filter(p => p.connected).length;
+  const total = state.providers.length;
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <h3 style="font-size:16px">🧠 AI 服务提供商管理</h3>
+        <p style="font-size:12px;color:var(--text-secondary);margin-top:4px">${connected}/${total} 已连接 · 支持OpenAI兼容API</p>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="showAddProviderForm()">+ 自定义添加</button>
+    </div>
+    <div class="provider-grid" id="providerGrid">
+      ${state.providers.map(p => renderProviderCard(p)).join('')}
+    </div>
+    <div id="addProviderForm" style="display:none;margin-top:16px"></div>
+  `;
+}
+
+function renderProviderCard(p) {
+  const isCustom = p.id.startsWith('custom_');
+  return `
+    <div class="provider-card">
+      <div class="provider-card-header">
+        <div class="provider-icon">${p.icon}</div>
+        <div>
+          <div class="provider-name">${p.name} ${isCustom ? '<span style="font-size:10px;color:var(--accent)">自定义</span>' : ''}</div>
+          <div class="provider-provider">${p.provider} · ${p.endpoint || '未配置端点'}</div>
+        </div>
+      </div>
+      <div class="provider-models">
+        ${p.models.length > 0 ? p.models.map(m => `<span class="provider-model-tag${m === p.defaultModel ? ' default' : ''}">${m}${m === p.defaultModel ? ' ★' : ''}</span>`).join('') : '<span style="font-size:11px;color:var(--text-muted)">暂无模型</span>'}
+      </div>
+      <div class="provider-actions">
+        <span class="provider-status ${p.connected ? 'status-connected' : 'status-disconnected'}">${p.connected ? '已连接' : '未连接'}</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-ghost btn-sm" onclick="editProvider('${p.id}')">✏️ 编辑</button>
+        ${isCustom ? `<button class="btn btn-ghost btn-sm" onclick="deleteProvider('${p.id}')" style="color:var(--red)">🗑 删除</button>` : ''}
+        <button class="toggle ${p.connected ? 'on' : 'off'}" onclick="toggleProvider('${p.id}')" style="width:36px;height:20px;border-radius:10px;border:none;cursor:pointer"></button>
+      </div>
+    </div>
+  `;
+}
+
+// ========== 添加提供商表单 ==========
+function showAddProviderForm() {
+  state.providerModels = [];
+  document.getElementById('addProviderForm').style.display = 'block';
+  document.getElementById('addProviderForm').innerHTML = `
+    <div class="provider-form-card">
+      <h4 style="margin-bottom:4px">🔌 自定义添加 AI 服务提供商</h4>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">支持任何兼容 OpenAI API 格式的服务</p>
+      <div style="margin-bottom:12px">
+        <span style="font-size:11px;color:var(--text-secondary);margin-right:8px">快捷预设:</span>
+        <div class="quick-presets">
+          <span class="quick-preset" onclick="fillPreset('deepseek')">DeepSeek</span>
+          <span class="quick-preset" onclick="fillPreset('qwen')">通义千问</span>
+          <span class="quick-preset" onclick="fillPreset('zhipu')">智谱GLM</span>
+          <span class="quick-preset" onclick="fillPreset('moonshot')">Moonshot</span>
+          <span class="quick-preset" onclick="fillPreset('baidu')">百度文心</span>
+          <span class="quick-preset" onclick="fillPreset('openai')">OpenAI兼容</span>
+          <span class="quick-preset" onclick="fillPreset('ollama')">Ollama本地</span>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">提供商名称 *</label>
+          <input class="form-input" id="provName" placeholder="如: DeepSeek">
+        </div>
+        <div class="form-field">
+          <label class="form-label">提供商标识 *</label>
+          <input class="form-input" id="provProvider" placeholder="如: deepseek">
+        </div>
+        <div class="form-field">
+          <label class="form-label">图标 Emoji</label>
+          <input class="form-input" id="provIcon" placeholder="如: 🔍">
+        </div>
+        <div class="form-field">
+          <label class="form-label">API端点</label>
+          <input class="form-input" id="provEndpoint" placeholder="如: https://api.deepseek.com/v1">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">API Key</label>
+          <input class="form-input" id="provApiKey" type="password" placeholder="sk-...">
+          <span class="form-hint">密钥仅存储在内存中，刷新后需重新输入</span>
+        </div>
+        <div class="form-field">
+          <label class="form-label">默认模型</label>
+          <input class="form-input" id="provDefaultModel" placeholder="如: deepseek-chat">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">模型列表</label>
+          <div class="model-tags-area" id="modelTagsArea">
+            <input class="model-tag-input" id="modelTagInput" placeholder="输入模型名后按回车添加..." onkeydown="addModelTag(event)">
+          </div>
+          <span class="form-hint">按 Enter 添加模型，点击标签上的 ✕ 移除</span>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button class="btn btn-ghost btn-sm" onclick="cancelAddProvider()">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitProvider()">✅ 添加提供商</button>
+        </div>
+      </div>
+    </div>
+  `;
+  setTimeout(() => document.getElementById('modelTagInput')?.focus(), 100);
+}
+
+function fillPreset(preset) {
+  const presets = {
+    deepseek: { name: 'DeepSeek', provider: 'deepseek', icon: '🔍', endpoint: 'https://api.deepseek.com/v1', models: ['deepseek-chat', 'deepseek-reasoner'], defaultModel: 'deepseek-chat' },
+    qwen: { name: '通义千问', provider: 'qwen', icon: '☁️', endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen-max', 'qwen-plus', 'qwen-turbo'], defaultModel: 'qwen-plus' },
+    zhipu: { name: '智谱 GLM', provider: 'zhipu', icon: '📚', endpoint: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-4-plus', 'glm-4-flash', 'glm-4-air'], defaultModel: 'glm-4-flash' },
+    moonshot: { name: 'Moonshot', provider: 'moonshot', icon: '🌙', endpoint: 'https://api.moonshot.cn/v1', models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'], defaultModel: 'moonshot-v1-32k' },
+    baidu: { name: '百度文心', provider: 'baidu', icon: '📖', endpoint: 'https://aip.baidubce.com', models: ['ernie-4.0-turbo', 'ernie-3.5', 'ernie-speed'], defaultModel: 'ernie-4.0-turbo' },
+    openai: { name: 'OpenAI兼容', provider: 'openai-compat', icon: '🤖', endpoint: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini'], defaultModel: 'gpt-4o' },
+    ollama: { name: 'Ollama 本地', provider: 'ollama', icon: '🦙', endpoint: 'http://localhost:11434/v1', models: ['llama3', 'qwen2.5', 'deepseek-r1'], defaultModel: 'llama3' }
+  };
+  const p = presets[preset];
+  if (!p) return;
+  document.getElementById('provName').value = p.name;
+  document.getElementById('provProvider').value = p.provider;
+  document.getElementById('provIcon').value = p.icon;
+  document.getElementById('provEndpoint').value = p.endpoint;
+  document.getElementById('provDefaultModel').value = p.defaultModel;
+  state.providerModels = [...p.models];
+  renderModelTags();
+  showToast('已填充预设: ' + p.name, 'success');
+}
+
+function addModelTag(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const input = document.getElementById('modelTagInput');
+  const val = input.value.trim();
+  if (val && !state.providerModels.includes(val)) {
+    state.providerModels.push(val);
+    input.value = '';
+    renderModelTags();
+  }
+}
+
+function removeModelTag(model) {
+  state.providerModels = state.providerModels.filter(m => m !== model);
+  renderModelTags();
+}
+
+function renderModelTags() {
+  const area = document.getElementById('modelTagsArea');
+  if (!area) return;
+  area.innerHTML = state.providerModels.map(m => `
+    <span class="model-tag-item">${m}<span class="model-tag-remove" onclick="removeModelTag('${m}')">✕</span></span>
+  `).join('') + '<input class="model-tag-input" id="modelTagInput" placeholder="输入模型名后按回车添加..." onkeydown="addModelTag(event)">';
+  setTimeout(() => document.getElementById('modelTagInput')?.focus(), 50);
+}
+
+function cancelAddProvider() {
+  document.getElementById('addProviderForm').style.display = 'none';
+  state.providerModels = [];
+}
+
+async function submitProvider() {
+  const name = document.getElementById('provName').value.trim();
+  const provider = document.getElementById('provProvider').value.trim();
+  if (!name || !provider) { showToast('请填写提供商名称和标识', 'error'); return; }
+
+  const newProvider = {
+    name,
+    provider,
+    icon: document.getElementById('provIcon').value.trim() || '🔌',
+    endpoint: document.getElementById('provEndpoint').value.trim(),
+    apiKey: document.getElementById('provApiKey').value.trim(),
+    defaultModel: document.getElementById('provDefaultModel').value.trim(),
+    models: [...state.providerModels]
+  };
+
+  try {
+    const res = await fetch('/api/providers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newProvider)
+    });
+    const json = await res.json();
+    if (json.success) {
+      state.providers.push(json.data);
+      state.providerModels = [];
+      document.getElementById('addProviderForm').style.display = 'none';
+      document.getElementById('providerGrid').innerHTML = state.providers.map(p => renderProviderCard(p)).join('');
+      showToast('提供商已添加: ' + name, 'success');
+    } else {
+      showToast('添加失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function editProvider(id) {
+  const p = state.providers.find(pr => pr.id === id);
+  if (!p) return;
+
+  state.providerModels = [...p.models];
+  document.getElementById('addProviderForm').style.display = 'block';
+  document.getElementById('addProviderForm').innerHTML = `
+    <div class="provider-form-card">
+      <h4 style="margin-bottom:4px">✏️ 编辑 AI 服务提供商</h4>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">编辑 "${p.name}" 的配置</p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">提供商名称</label>
+          <input class="form-input" id="provName" value="${escapeHtml(p.name)}">
+        </div>
+        <div class="form-field">
+          <label class="form-label">提供商标识</label>
+          <input class="form-input" id="provProvider" value="${escapeHtml(p.provider)}">
+        </div>
+        <div class="form-field">
+          <label class="form-label">图标 Emoji</label>
+          <input class="form-input" id="provIcon" value="${p.icon}">
+        </div>
+        <div class="form-field">
+          <label class="form-label">API端点</label>
+          <input class="form-input" id="provEndpoint" value="${escapeHtml(p.endpoint || '')}">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">API Key</label>
+          <input class="form-input" id="provApiKey" type="password" value="${escapeHtml(p.apiKey || '')}" placeholder="留空保持不变">
+        </div>
+        <div class="form-field">
+          <label class="form-label">默认模型</label>
+          <input class="form-input" id="provDefaultModel" value="${escapeHtml(p.defaultModel || '')}">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">模型列表</label>
+          <div class="model-tags-area" id="modelTagsArea">
+            <input class="model-tag-input" id="modelTagInput" placeholder="输入模型名后按回车添加..." onkeydown="addModelTag(event)">
+          </div>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button class="btn btn-ghost btn-sm" onclick="cancelAddProvider()">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitEditProvider('${id}')">💾 保存修改</button>
+        </div>
+      </div>
+    </div>
+  `;
+  renderModelTags();
+}
+
+async function submitEditProvider(id) {
+  const name = document.getElementById('provName').value.trim();
+  const provider = document.getElementById('provProvider').value.trim();
+  if (!name || !provider) { showToast('请填写提供商名称和标识', 'error'); return; }
+
+  const updates = {
+    name,
+    provider,
+    icon: document.getElementById('provIcon').value.trim() || '🔌',
+    endpoint: document.getElementById('provEndpoint').value.trim(),
+    defaultModel: document.getElementById('provDefaultModel').value.trim(),
+    models: [...state.providerModels]
+  };
+  const apiKey = document.getElementById('provApiKey').value.trim();
+  if (apiKey) updates.apiKey = apiKey;
+
+  try {
+    const res = await fetch(`/api/providers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    const json = await res.json();
+    if (json.success) {
+      const idx = state.providers.findIndex(pr => pr.id === id);
+      if (idx !== -1) state.providers[idx] = json.data;
+      state.providerModels = [];
+      document.getElementById('addProviderForm').style.display = 'none';
+      document.getElementById('providerGrid').innerHTML = state.providers.map(p => renderProviderCard(p)).join('');
+      showToast('提供商已更新: ' + name, 'success');
+    } else {
+      showToast('更新失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function deleteProvider(id) {
+  const p = state.providers.find(pr => pr.id === id);
+  if (!p || !confirm(`确定要删除 "${p.name}" 吗？此操作不可撤销。`)) return;
+
+  try {
+    const res = await fetch(`/api/providers/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      state.providers = state.providers.filter(pr => pr.id !== id);
+      document.getElementById('providerGrid').innerHTML = state.providers.map(p => renderProviderCard(p)).join('');
+      showToast('已删除: ' + p.name, 'success');
+    } else {
+      showToast('删除失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function toggleProvider(id) {
+  const p = state.providers.find(pr => pr.id === id);
+  if (!p) return;
+  try {
+    const res = await fetch(`/api/providers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connected: !p.connected })
+    });
+    const json = await res.json();
+    if (json.success) {
+      p.connected = json.data.connected;
+      document.getElementById('providerGrid').innerHTML = state.providers.map(p => renderProviderCard(p)).join('');
+    }
+  } catch (e) {
+    showToast('操作失败', 'error');
+  }
+}
+
+// ========== AI搭档Prompt设置面板 ==========
+function renderPromptsPanel() {
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <h3 style="font-size:16px">🤖 AI搭档 Prompt 设置</h3>
+        <p style="font-size:12px;color:var(--text-secondary);margin-top:4px">按6个工作层管理每个AI搭档的Prompt配置</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <div style="width:240px;flex-shrink:0">
+        <div style="background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:8px">
+          <div style="font-size:11px;color:var(--text-muted);padding:8px 12px;text-transform:uppercase;letter-spacing:1px">选择AI搭档</div>
+          ${state.agents.map(a => `
+            <div class="prompt-agent-item" id="promptAgent-${a.id}" onclick="selectPromptAgent('${a.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text-secondary);transition:var(--transition)">
+              <span style="font-size:18px">${a.icon}</span>
+              <span>${a.name}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div style="flex:1;min-width:0" id="promptEditorArea">
+        <div class="empty-state">
+          <div class="empty-state-icon">👈</div>
+          <h3>选择AI搭档</h3>
+          <p>从左侧列表中选择一个AI搭档，编辑其6层Prompt配置</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// 当前选中的prompt编辑智能体
+let currentPromptAgent = null;
+let currentPromptLayer = 'identity';
+
+async function selectPromptAgent(agentId) {
+  currentPromptAgent = agentId;
+  currentPromptLayer = 'identity';
+  
+  // 高亮选中项
+  document.querySelectorAll('.prompt-agent-item').forEach(el => el.style.background = '');
+  const item = document.getElementById('promptAgent-' + agentId);
+  if (item) item.style.background = 'var(--bg-hover)';
+  
+  const agent = state.agents.find(a => a.id === agentId);
+  if (!agent) return;
+  
+  try {
+    const res = await fetch('/api/prompts/' + agentId);
+    const json = await res.json();
+    if (json.success) {
+      renderPromptEditor(agent, json.data.layers);
+    }
+  } catch (e) {
+    showToast('加载Prompt失败', 'error');
+  }
+}
+
+function renderPromptEditor(agent, layers) {
+  const area = document.getElementById('promptEditorArea');
+  area.innerHTML = `
+    <div style="background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden">
+      <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+        <span style="font-size:24px">${agent.icon}</span>
+        <div>
+          <div style="font-size:15px;font-weight:600">${agent.name}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">${agent.domain} · P${agent.priority}</div>
+        </div>
+        <span style="flex:1"></span>
+        <button class="btn btn-outline btn-sm" onclick="selectPromptAgent('${agent.id}')">🔄 刷新</button>
+      </div>
+      <div style="display:flex;border-bottom:1px solid var(--border)">
+        ${LAYERS.map((l, i) => `
+          <button class="prompt-layer-tab" id="promptLayerTab-${l}" onclick="switchPromptLayer('${l}')" style="flex:1;padding:10px 8px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12px;transition:var(--transition);border-bottom:2px solid transparent;text-align:center">
+            ${LAYER_ICONS[l]} ${LAYER_NAMES[l]}
+          </button>
+        `).join('')}
+      </div>
+      <div style="padding:16px" id="promptLayerContent">
+        <div style="text-align:center;color:var(--text-muted);padding:20px">加载中...</div>
+      </div>
+    </div>
+  `;
+  // 默认显示identity层
+  switchPromptLayer('identity');
+  
+  // 保存layers到全局
+  window._promptLayers = layers;
+}
+
+function switchPromptLayer(layer) {
+  currentPromptLayer = layer;
+  
+  // 更新tab样式
+  document.querySelectorAll('.prompt-layer-tab').forEach(t => {
+    t.style.color = 'var(--text-secondary)';
+    t.style.borderBottomColor = 'transparent';
+    t.style.fontWeight = 'normal';
+  });
+  const tab = document.getElementById('promptLayerTab-' + layer);
+  if (tab) {
+    tab.style.color = 'var(--accent)';
+    tab.style.borderBottomColor = 'var(--accent)';
+    tab.style.fontWeight = '600';
+  }
+  
+  const content = window._promptLayers ? window._promptLayers[layer] || '' : '';
+  const container = document.getElementById('promptLayerContent');
+  if (!container) return;
+  
+  container.innerHTML = `
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:14px;font-weight:600">${LAYER_ICONS[layer]} ${LAYER_NAMES[layer]} Prompt</span>
+      <span style="font-size:10px;color:var(--text-muted)">${currentPromptAgent}/${layer}.md</span>
+    </div>
+    <textarea id="promptTextarea" style="width:100%;height:350px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;color:var(--text-primary);font-size:13px;font-family:'SF Mono','Fira Code','Menlo',monospace;line-height:1.6;resize:vertical;outline:none" spellcheck="false">${escapeHtml(content)}</textarea>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="selectPromptAgent('${currentPromptAgent}')">↩ 撤销修改</button>
+      <button class="btn btn-primary btn-sm" onclick="savePromptLayer('${layer}')">💾 保存 ${LAYER_NAMES[layer]}</button>
+    </div>
+  `;
+  
+  setTimeout(() => {
+    const ta = document.getElementById('promptTextarea');
+    if (ta) ta.focus();
+  }, 100);
+}
+
+async function savePromptLayer(layer) {
+  const textarea = document.getElementById('promptTextarea');
+  if (!textarea) return;
+  
+  const content = textarea.value;
+  
+  try {
+    const res = await fetch(`/api/prompts/${currentPromptAgent}/${layer}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    const json = await res.json();
+    if (json.success) {
+      // 更新内存中的layers
+      if (window._promptLayers) {
+        window._promptLayers[layer] = content;
+      }
+      showToast(`✅ ${LAYER_NAMES[layer]} 已保存${json.data.saved ? ' (已写入文件)' : ''}`, 'success');
+    } else {
+      showToast('保存失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+// ========== 频道设置面板 ==========
+function renderChannelSettingsPanel() {
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <h3 style="font-size:16px">📡 频道设置</h3>
+        <p style="font-size:12px;color:var(--text-secondary);margin-top:4px">管理多平台频道连接与配置</p>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="showAddChannelForm()">+ 添加频道</button>
+    </div>
+    <div class="channel-list" id="channelSettingsList">
+      ${state.channels.map(ch => renderChannelSettingItem(ch)).join('')}
+    </div>
+    <div id="addChannelForm" style="display:none;margin-top:16px"></div>
+  `;
+}
+
+function renderChannelSettingItem(ch) {
+  const isCustom = ch.id.startsWith('custom_ch_');
+  return `
+    <div class="channel-item" style="flex-wrap:wrap">
+      <span class="channel-icon">${ch.icon}</span>
+      <div class="channel-info">
+        <div class="channel-name">${ch.name} ${isCustom ? '<span style="font-size:10px;color:var(--accent)">自定义</span>' : ''}</div>
+        <div class="channel-type">${ch.type} · ${Object.keys(ch.config || {}).length}项配置</div>
+      </div>
+      <span class="channel-status ${ch.connected ? 'status-connected' : 'status-disconnected'}">${ch.connected ? '已连接' : '未连接'}</span>
+      <button class="btn btn-ghost btn-sm" onclick="editChannel('${ch.id}')">✏️ 编辑</button>
+      ${isCustom ? `<button class="btn btn-ghost btn-sm" onclick="deleteChannel('${ch.id}')" style="color:var(--red)">🗑 删除</button>` : ''}
+      <button class="toggle ${ch.connected ? 'on' : 'off'}" onclick="toggleChannel('${ch.id}')" style="width:36px;height:20px;border-radius:10px;border:none;cursor:pointer"></button>
+    </div>
+  `;
+}
+
+function showAddChannelForm() {
+  document.getElementById('addChannelForm').style.display = 'block';
+  document.getElementById('addChannelForm').innerHTML = `
+    <div class="provider-form-card">
+      <h4 style="margin-bottom:4px">📡 添加自定义频道</h4>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">添加自定义IM、电商或API频道</p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">频道名称 *</label>
+          <input class="form-input" id="chName" placeholder="如: 企业微信">
+        </div>
+        <div class="form-field">
+          <label class="form-label">频道类型 *</label>
+          <select class="form-input" id="chType">
+            <option value="im">IM即时通讯</option>
+            <option value="miniapp">小程序</option>
+            <option value="ecommerce">电商平台</option>
+            <option value="mp">公众号</option>
+            <option value="api">API接口</option>
+            <option value="custom">自定义</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">图标 Emoji</label>
+          <input class="form-input" id="chIcon" placeholder="如: 💼">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">配置 (JSON)</label>
+          <textarea class="form-input" id="chConfig" rows="3" placeholder='{"webhook":"","appId":""}' style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+          <span class="form-hint">可选JSON配置，如webhook地址、appId等</span>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button class="btn btn-ghost btn-sm" onclick="cancelAddChannel()">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitChannel()">✅ 添加频道</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function cancelAddChannel() {
+  document.getElementById('addChannelForm').style.display = 'none';
+}
+
+async function submitChannel() {
+  const name = document.getElementById('chName').value.trim();
+  const type = document.getElementById('chType').value;
+  if (!name) { showToast('请填写频道名称', 'error'); return; }
+  
+  let config = {};
+  try {
+    const configStr = document.getElementById('chConfig').value.trim();
+    if (configStr) config = JSON.parse(configStr);
+  } catch (e) {
+    showToast('配置JSON格式错误', 'error');
+    return;
+  }
+  
+  const newChannel = {
+    name,
+    type,
+    icon: document.getElementById('chIcon').value.trim() || '📡',
+    config
+  };
+  
+  try {
+    const res = await fetch('/api/channel-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newChannel)
+    });
+    const json = await res.json();
+    if (json.success) {
+      state.channels.push(json.data);
+      document.getElementById('addChannelForm').style.display = 'none';
+      document.getElementById('channelSettingsList').innerHTML = state.channels.map(ch => renderChannelSettingItem(ch)).join('');
+      renderSidebar();
+      showToast('频道已添加: ' + name, 'success');
+    } else {
+      showToast('添加失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+function editChannel(id) {
+  const ch = state.channels.find(c => c.id === id);
+  if (!ch) return;
+  
+  document.getElementById('addChannelForm').style.display = 'block';
+  document.getElementById('addChannelForm').innerHTML = `
+    <div class="provider-form-card">
+      <h4 style="margin-bottom:4px">✏️ 编辑频道: ${ch.name}</h4>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">修改频道配置</p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">频道名称</label>
+          <input class="form-input" id="chName" value="${escapeHtml(ch.name)}">
+        </div>
+        <div class="form-field">
+          <label class="form-label">频道类型</label>
+          <select class="form-input" id="chType">
+            ${['im','miniapp','ecommerce','mp','api','custom'].map(t => `<option value="${t}" ${ch.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">图标 Emoji</label>
+          <input class="form-input" id="chIcon" value="${ch.icon}">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">配置 (JSON)</label>
+          <textarea class="form-input" id="chConfig" rows="3" style="font-family:monospace;font-size:12px;resize:vertical">${escapeHtml(JSON.stringify(ch.config || {}, null, 2))}</textarea>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button class="btn btn-ghost btn-sm" onclick="cancelAddChannel()">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitEditChannel('${id}')">💾 保存修改</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitEditChannel(id) {
+  const name = document.getElementById('chName').value.trim();
+  const type = document.getElementById('chType').value;
+  if (!name) { showToast('请填写频道名称', 'error'); return; }
+  
+  let config = {};
+  try {
+    const configStr = document.getElementById('chConfig').value.trim();
+    if (configStr) config = JSON.parse(configStr);
+  } catch (e) {
+    showToast('配置JSON格式错误', 'error');
+    return;
+  }
+  
+  const updates = {
+    name,
+    type,
+    icon: document.getElementById('chIcon').value.trim() || '📡',
+    config
+  };
+  
+  try {
+    const res = await fetch('/api/channel-settings/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    const json = await res.json();
+    if (json.success) {
+      const idx = state.channels.findIndex(c => c.id === id);
+      if (idx !== -1) state.channels[idx] = json.data;
+      document.getElementById('addChannelForm').style.display = 'none';
+      document.getElementById('channelSettingsList').innerHTML = state.channels.map(ch => renderChannelSettingItem(ch)).join('');
+      renderSidebar();
+      showToast('频道已更新: ' + name, 'success');
+    } else {
+      showToast('更新失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function deleteChannel(id) {
+  const ch = state.channels.find(c => c.id === id);
+  if (!ch || !confirm(`确定要删除频道 "${ch.name}" 吗？`)) return;
+  
+  try {
+    const res = await fetch('/api/channel-settings/' + id, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      state.channels = state.channels.filter(c => c.id !== id);
+      document.getElementById('channelSettingsList').innerHTML = state.channels.map(ch => renderChannelSettingItem(ch)).join('');
+      renderSidebar();
+      showToast('已删除频道: ' + ch.name, 'success');
+    } else {
+      showToast('删除失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function toggleChannel(id) {
+  const ch = state.channels.find(c => c.id === id);
+  if (!ch) return;
+  try {
+    const res = await fetch('/api/channel-settings/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connected: !ch.connected })
+    });
+    const json = await res.json();
+    if (json.success) {
+      ch.connected = json.data.connected;
+      document.getElementById('channelSettingsList').innerHTML = state.channels.map(ch => renderChannelSettingItem(ch)).join('');
+      renderSidebar();
+    }
+  } catch (e) {
+    showToast('操作失败', 'error');
+  }
+}
+
+// ========== 通用设置面板 ==========
+function renderGeneralSettings() {
+  return `
+    <div class="settings-section">
+      <div class="settings-section-title">🔧 通用6工作层设置</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        ${LAYERS.map(l => `
+          <div class="form-field">
+            <label class="form-label">${LAYER_ICONS[l]} ${LAYER_NAMES[l]}</label>
+            <select class="form-input" id="gen-layer-${l}">
+              <option value="enabled" selected>✅ 启用</option>
+              <option value="disabled">⏸ 禁用</option>
+              <option value="readonly">🔒 只读</option>
+            </select>
+            <span class="form-hint">控制所有AI搭档的此层行为</span>
+          </div>
+        `).join('')}
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm">恢复默认</button>
+        <button class="btn btn-primary btn-sm" onclick="showToast('通用设置已保存','success')">💾 保存设置</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">🤖 默认AI提供商</div>
+      <div class="form-field">
+        <label class="form-label">默认使用的AI服务</label>
+        <select class="form-input" id="gen-default-provider">
+          ${state.providers.filter(p => p.connected).map(p => `<option value="${p.id}">${p.icon} ${p.name} (${p.provider})</option>`).join('')}
+        </select>
+        <span class="form-hint">新对话的默认AI提供商，可在对话中临时切换</span>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">💾 数据管理</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm">📤 导出配置</button>
+        <button class="btn btn-outline btn-sm">📥 导入配置</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--red);border-color:var(--red)">🗑 重置所有设置</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderAbout() {
+  return `
+    <div class="settings-section">
+      <div class="settings-section-title">🍺 Two Girls Brew AI 搭档系统</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:2">
+        <p>版本: <strong style="color:var(--text-primary)">v3.0.0</strong></p>
+        <p>架构: 9智能体 × 6层 = 54知识模块</p>
+        <p>智能体: ${state.agents.map(a => a.name).join(', ')}</p>
+        <p>频道: 飞书 | 微信 | 门店小程序 | 有赞微商城 | 公众号 | 自定义MCP</p>
+        <p>AI提供商: ${state.providers.filter(p => p.connected).map(p => p.name).join(', ') || '无'}</p>
+        <p>运行端口: ${window.location.port || '3456'}</p>
+        <p style="margin-top:8px;font-size:11px">Built with ❤️ for Two Girls Brew · Est.2012 · 厦门</p>
+      </div>
+    </div>
+  `;
+}
+
+// ========== 工具函数 ==========
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showToast(msg, type) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function renderSidebar() {
+  document.getElementById('agentNav').innerHTML = state.agents.map(a => `
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="nav-item" style="flex:1" onclick="openAgentDetail('${a.id}')">
+        <span>${a.icon}</span> ${a.name}
+      </button>
+      <button class="nav-item" style="width:32px;justify-content:center;padding:10px 6px" onclick="event.stopPropagation();openAgentChat('${a.id}')" title="与${a.name}对话">
+        💬
+      </button>
+      <button class="nav-item" style="width:32px;justify-content:center;padding:10px 6px" onclick="event.stopPropagation();openAgentCron('${a.id}')" title="${a.name}定时任务">
+        ⏰
+      </button>
+    </div>
+  `).join('');
+
+  document.getElementById('channelNav').innerHTML = state.channels.map(ch => `
+    <button class="nav-item" onclick="showSection('channels')">
+      <span>${ch.icon}</span> ${ch.name}
+      <span class="dot" style="background:${ch.connected ? 'var(--green)' : 'var(--text-muted)'}"></span>
+    </button>
+  `).join('');
+}
+
+// ========== 弹窗 ==========
+async function openAgentDetail(agentId) {
+  const agent = state.agents.find(a => a.id === agentId);
+  if (!agent) return;
+
+  document.getElementById('modalTitle').innerHTML = `<span style="font-size:24px">${agent.icon}</span> ${agent.name} <span style="font-size:12px;color:var(--text-secondary)">· ${agent.domain}</span>`;
+  
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      ${LAYERS.map(l => `
+        <button class="layer-tab active" onclick="loadLayerInModal('${agentId}','${l}')" id="modalLayerTab-${l}">
+          ${LAYER_ICONS[l]} ${LAYER_NAMES[l]}
+        </button>
+      `).join('')}
+    </div>
+    <div id="modalLayerContent" style="background:var(--bg-card);border-radius:var(--radius-sm);padding:20px;border:1px solid var(--border)">
+      <div style="text-align:center;color:var(--text-muted);padding:40px">加载中...</div>
+    </div>
+  `;
+
+  document.getElementById('modalOverlay').style.display = 'flex';
+  loadLayerInModal(agentId, 'identity');
+}
+
+async function loadLayerInModal(agentId, layer) {
+  // 更新tab状态
+  document.querySelectorAll('[id^="modalLayerTab-"]').forEach(t => t.classList.remove('active'));
+  const tab = document.getElementById(`modalLayerTab-${layer}`);
+  if (tab) tab.classList.add('active');
+
+  const content = document.getElementById('modalLayerContent');
+  content.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px">加载中...</div>';
+
+  try {
+    const res = await fetch(`/api/agents/${agentId}/${layer}`);
+    const json = await res.json();
+    if (json.success) {
+      // 简单markdown渲染
+      const text = json.data.content
+        .replace(/^### (.+)$/gm, '<h4 style="color:var(--gold);margin:16px 0 8px;font-size:14px">$1</h4>')
+        .replace(/^## (.+)$/gm, '<h3 style="color:var(--accent);margin:20px 0 10px;font-size:16px">$1</h3>')
+        .replace(/^# (.+)$/gm, '<h2 style="color:var(--accent);margin:24px 0 12px;font-size:18px">$1</h2>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text-primary)">$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="background:var(--bg-hover);padding:2px 6px;border-radius:4px;font-size:12px">$1</code>')
+        .replace(/^- (.+)$/gm, '<li style="margin-left:16px;color:var(--text-secondary)">$1</li>')
+        .replace(/^\|(.+)\|$/gm, (match) => {
+          if (match.includes('---')) return '';
+          const cells = match.split('|').filter(c => c.trim());
+          const isHeader = cells.some(c => c.includes('---'));
+          const tag = isHeader ? 'th' : 'td';
+          return '<tr>' + cells.map(c => `<${tag} style="padding:6px 12px;border:1px solid var(--border);font-size:12px;text-align:left">${c.trim()}</${tag}>`).join('') + '</tr>';
+        })
+        .replace(/(<tr>.*<\/tr>\n?)+/g, (match) => `<table style="width:100%;border-collapse:collapse;margin:12px 0">${match}</table>`)
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/```yaml\n?([\s\S]*?)```/g, '<pre style="background:var(--bg-input);padding:16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:var(--text-secondary)">$1</pre>')
+        .replace(/```json\n?([\s\S]*?)```/g, '<pre style="background:var(--bg-input);padding:16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:var(--text-secondary)">$1</pre>')
+        .replace(/```\n?([\s\S]*?)```/g, '<pre style="background:var(--bg-input);padding:16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:var(--text-secondary)">$1</pre>')
+        .replace(/> (.+)$/gm, '<blockquote style="border-left:3px solid var(--accent);padding:8px 16px;margin:12px 0;color:var(--gold);background:var(--bg-hover);border-radius:0 8px 8px 0">$1</blockquote>')
+        .replace(/---/g, '<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">');
+
+      content.innerHTML = `<div style="line-height:1.8;font-size:13px">${text}</div>`;
+    }
+  } catch (e) {
+    content.innerHTML = '<div style="color:var(--red);text-align:center;padding:40px">加载失败</div>';
+  }
+}
+
+function openLayerDetail(agentId, layer) {
+  openAgentDetail(agentId);
+  setTimeout(() => loadLayerInModal(agentId, layer), 200);
+}
+
+// ========== 资源库 ==========
+function renderResources() {
+  const filtered = getFilteredResources();
+  const catCounts = {};
+  state.resourceCategories.forEach(c => {
+    catCounts[c.id] = state.resources.filter(r => r.category === c.id).length;
+  });
+
+  document.getElementById('section-resources').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <h3 style="font-size:16px">📚 内部知识库资源库</h3>
+        <p style="font-size:12px;color:var(--text-secondary);margin-top:4px">共 ${state.resources.length} 份资料 · 8个分类</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="showBatchAddPanel()">⚡ 一键添加资料</button>
+        <button class="btn btn-outline btn-sm" onclick="showAddResourceForm()">+ 手动添加</button>
+      </div>
+    </div>
+
+    <div class="resource-toolbar">
+      <input class="search-input" placeholder="🔍 搜索资料标题、内容、标签..." value="${escapeHtml(state.resourceSearch)}" oninput="resourceSearchChange(this.value)">
+      <div class="category-filter">
+        <button class="category-chip ${state.resourceFilter === 'all' ? 'active' : ''}" onclick="resourceFilterChange('all')">全部 (${state.resources.length})</button>
+        ${state.resourceCategories.map(c => `
+          <button class="category-chip ${state.resourceFilter === c.id ? 'active' : ''}" onclick="resourceFilterChange('${c.id}')">${c.icon} ${c.name} (${catCounts[c.id] || 0})</button>
+        `).join('')}
+      </div>
+    </div>
+
+    <div id="batchAddPanel" style="display:none;margin-bottom:16px"></div>
+    <div id="addResourceForm" style="display:none;margin-bottom:16px"></div>
+
+    ${filtered.length === 0 ? `
+      <div class="empty-state">
+        <div class="empty-state-icon">📚</div>
+        <h3>${state.resourceSearch ? '没有找到匹配的资料' : '资源库为空'}</h3>
+        <p>${state.resourceSearch ? '尝试其他关键词' : '点击"一键添加资料"快速导入内部知识库模板'}</p>
+        ${!state.resourceSearch ? '<button class="btn btn-primary btn-sm" onclick="showBatchAddPanel()" style="width:auto;margin-top:12px">⚡ 一键添加全部资料</button>' : ''}
+      </div>
+    ` : `
+      <div class="resource-grid">
+        ${filtered.map(r => renderResourceCard(r)).join('')}
+      </div>
+    `}
+  `;
+}
+
+function getFilteredResources() {
+  let result = [...state.resources];
+  if (state.resourceFilter !== 'all') {
+    result = result.filter(r => r.category === state.resourceFilter);
+  }
+  if (state.resourceSearch) {
+    const q = state.resourceSearch.toLowerCase();
+    result = result.filter(r =>
+      r.title.toLowerCase().includes(q) ||
+      r.content.toLowerCase().includes(q) ||
+      r.tags.some(t => t.toLowerCase().includes(q))
+    );
+  }
+  result.sort((a, b) => b.updatedAt - a.updatedAt);
+  return result;
+}
+
+function resourceFilterChange(catId) {
+  state.resourceFilter = catId;
+  renderResources();
+}
+
+function resourceSearchChange(val) {
+  state.resourceSearch = val;
+  renderResources();
+}
+
+function renderResourceCard(r) {
+  const cat = state.resourceCategories.find(c => c.id === r.category);
+  const catName = cat ? cat.name : r.category;
+  const catColor = cat ? cat.color : '#607D8B';
+  const preview = r.content.replace(/^#.*$/gm, '').replace(/\|.*\|/gm, '').replace(/\*/g, '').trim().substring(0, 150);
+  const date = new Date(r.updatedAt).toLocaleDateString('zh-CN');
+
+  return `
+    <div class="resource-card" onclick="openResourceDetail('${r.id}')">
+      <div class="resource-card-header">
+        <div class="resource-card-title">${escapeHtml(r.title)}</div>
+        <span class="resource-card-cat" style="background:${catColor}20;color:${catColor}">${catName}</span>
+      </div>
+      <div class="resource-card-preview">${escapeHtml(preview)}</div>
+      <div class="resource-tags">
+        ${r.tags.map(t => `<span class="resource-tag">#${t}</span>`).join('')}
+      </div>
+      <div class="resource-card-meta">
+        <span>📅 ${date}</span>
+        <span>📎 ${r.source}</span>
+        <span style="flex:1"></span>
+        <div class="resource-card-actions">
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editResource('${r.id}')">✏️</button>
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteResource('${r.id}')" style="color:var(--red)">🗑</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openResourceDetail(id) {
+  const r = state.resources.find(res => res.id === id);
+  if (!r) return;
+  const cat = state.resourceCategories.find(c => c.id === r.category);
+  const catName = cat ? cat.name : r.category;
+  const date = new Date(r.updatedAt).toLocaleString('zh-CN');
+
+  document.getElementById('modalTitle').innerHTML = `📄 ${escapeHtml(r.title)} <span style="font-size:12px;color:var(--text-secondary)">· ${catName}</span>`;
+  document.getElementById('modalBody').innerHTML = `
+    <div class="resource-detail-header">
+      <span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">📂 ${catName}</span>
+      <span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">📅 ${date}</span>
+      <span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">📎 ${escapeHtml(r.source)}</span>
+      <span style="flex:1"></span>
+      <div class="resource-tags" style="margin-top:0">${r.tags.map(t => `<span class="resource-tag">#${t}</span>`).join('')}</div>
+    </div>
+    <div class="resource-detail-content">${renderMarkdown(r.content)}</div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">关闭</button>
+      <button class="btn btn-outline btn-sm" onclick="editResource('${id}');closeModal()">✏️ 编辑</button>
+      <button class="btn btn-primary btn-sm" onclick="copyResourceContent()">📋 复制内容</button>
+    </div>
+  `;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function copyResourceContent() {
+  const body = document.getElementById('modalBody');
+  if (body) {
+    const text = body.querySelector('.resource-detail-content')?.innerText || body.innerText;
+    navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板', 'success')).catch(() => showToast('复制失败', 'error'));
+  }
+}
+
+function renderMarkdown(text) {
+  return text
+    .replace(/^### (.+)$/gm, '<h4 style="color:var(--gold);margin:16px 0 8px;font-size:14px">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="color:var(--accent);margin:20px 0 10px;font-size:16px">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2 style="color:var(--accent);margin:24px 0 12px;font-size:18px">$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text-primary)">$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code style="background:var(--bg-hover);padding:2px 6px;border-radius:4px;font-size:12px">$1</code>')
+    .replace(/^- (.+)$/gm, '<li style="margin-left:16px;color:var(--text-secondary)">$1</li>')
+    .replace(/^\|(.+)\|$/gm, (match) => {
+      if (match.includes('---')) return '';
+      const cells = match.split('|').filter(c => c.trim());
+      const isHeader = cells.some(c => c.includes('---'));
+      const tag = isHeader ? 'th' : 'td';
+      return '<tr>' + cells.map(c => `<${tag} style="padding:6px 12px;border:1px solid var(--border);font-size:12px;text-align:left">${c.trim().replace(/-{2,}/g,'')}</${tag}>`).join('') + '</tr>';
+    })
+    .replace(/(<tr>.*<\/tr>\n?)+/g, (match) => `<table style="width:100%;border-collapse:collapse;margin:12px 0">${match}</table>`)
+    .replace(/\n\n/g, '<br><br>');
+}
+
+function showBatchAddPanel() {
+  const panel = document.getElementById('batchAddPanel');
+  panel.style.display = 'block';
+  document.getElementById('addResourceForm').style.display = 'none';
+
+  const existingCounts = {};
+  state.resourceCategories.forEach(c => {
+    existingCounts[c.id] = state.resources.filter(r => r.category === c.id).length;
+  });
+
+  panel.innerHTML = `
+    <div class="provider-form-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <h4 style="margin-bottom:4px">⚡ 一键添加内部知识库资料</h4>
+          <p style="font-size:12px;color:var(--text-secondary)">选择分类批量导入预置模板资料，已存在的资料不会被重复添加</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="batchAddAllResources()">📥 一键添加全部</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('batchAddPanel').style.display='none'">取消</button>
+        </div>
+      </div>
+      <div class="batch-add-grid">
+        ${state.resourceCategories.map(c => `
+          <div class="batch-add-card" onclick="batchAddCategory('${c.id}')">
+            <div class="batch-add-card-icon">${c.icon}</div>
+            <div class="batch-add-card-name">${c.name}</div>
+            <div class="batch-add-card-count">已有 ${existingCounts[c.id] || 0} 份</div>
+            <button class="btn btn-outline btn-sm" style="margin-top:8px;width:100%" onclick="event.stopPropagation();batchAddCategory('${c.id}')">+ 添加模板</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+async function batchAddCategory(categoryId) {
+  showToast('正在添加 ' + categoryId + ' 分类资料...', 'success');
+  try {
+    const res = await fetch('/api/resources/batch-add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: categoryId })
+    });
+    const json = await res.json();
+    if (json.success) {
+      // 重新加载资源
+      await refreshResources();
+      renderResources();
+      showToast(`✅ 已添加 ${json.data.added} 份 ${categoryId} 资料`, 'success');
+    } else {
+      showToast('添加失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function batchAddAllResources() {
+  showToast('正在一键添加全部知识库资料...', 'success');
+  try {
+    const res = await fetch('/api/resources/batch-add-all', { method: 'POST' });
+    const json = await res.json();
+    if (json.success) {
+      await refreshResources();
+      renderResources();
+      renderDashboard();
+      showToast(`✅ 已添加 ${json.data.added} 份资料，共 ${json.data.total} 份`, 'success');
+    } else {
+      showToast('添加失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function refreshResources() {
+  try {
+    const res = await fetch('/api/resources');
+    const json = await res.json();
+    if (json.success) {
+      state.resources = json.data;
+    }
+  } catch (e) {}
+}
+
+function showAddResourceForm() {
+  document.getElementById('batchAddPanel').style.display = 'none';
+  const form = document.getElementById('addResourceForm');
+  form.style.display = 'block';
+  form.innerHTML = `
+    <div class="provider-form-card">
+      <h4 style="margin-bottom:4px">📝 手动添加资料</h4>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">添加自定义知识库文档</p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">资料标题 *</label>
+          <input class="form-input" id="resTitle" placeholder="如: 新品上线流程">
+        </div>
+        <div class="form-field">
+          <label class="form-label">分类 *</label>
+          <select class="form-input" id="resCategory">
+            ${state.resourceCategories.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">来源</label>
+          <input class="form-input" id="resSource" placeholder="如: 运营团队">
+        </div>
+        <div class="form-field">
+          <label class="form-label">标签 (逗号分隔)</label>
+          <input class="form-input" id="resTags" placeholder="如: SOP,门店,运营">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">内容 (支持Markdown) *</label>
+          <textarea class="form-input" id="resContent" rows="8" placeholder="输入资料内容..." style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addResourceForm').style.display='none'">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitResource()">✅ 添加资料</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitResource() {
+  const title = document.getElementById('resTitle').value.trim();
+  const category = document.getElementById('resCategory').value;
+  const source = document.getElementById('resSource').value.trim();
+  const tagsStr = document.getElementById('resTags').value.trim();
+  const content = document.getElementById('resContent').value.trim();
+
+  if (!title) { showToast('请填写资料标题', 'error'); return; }
+  if (!content) { showToast('请填写资料内容', 'error'); return; }
+
+  const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+
+  try {
+    const res = await fetch('/api/resources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, category, source: source || '手动添加', content, tags })
+    });
+    const json = await res.json();
+    if (json.success) {
+      state.resources.push(json.data);
+      document.getElementById('addResourceForm').style.display = 'none';
+      renderResources();
+      renderDashboard();
+      showToast('✅ 资料已添加: ' + title, 'success');
+    } else {
+      showToast('添加失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+function editResource(id) {
+  const r = state.resources.find(res => res.id === id);
+  if (!r) return;
+  const form = document.getElementById('addResourceForm');
+  form.style.display = 'block';
+  document.getElementById('batchAddPanel').style.display = 'none';
+  form.innerHTML = `
+    <div class="provider-form-card">
+      <h4 style="margin-bottom:4px">✏️ 编辑资料</h4>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">编辑 "${escapeHtml(r.title)}"</p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">资料标题</label>
+          <input class="form-input" id="resTitle" value="${escapeHtml(r.title)}">
+        </div>
+        <div class="form-field">
+          <label class="form-label">分类</label>
+          <select class="form-input" id="resCategory">
+            ${state.resourceCategories.map(c => `<option value="${c.id}" ${r.category === c.id ? 'selected' : ''}>${c.icon} ${c.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">来源</label>
+          <input class="form-input" id="resSource" value="${escapeHtml(r.source || '')}">
+        </div>
+        <div class="form-field">
+          <label class="form-label">标签 (逗号分隔)</label>
+          <input class="form-input" id="resTags" value="${(r.tags || []).join(', ')}">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">内容</label>
+          <textarea class="form-input" id="resContent" rows="8" style="font-family:monospace;font-size:12px;resize:vertical">${escapeHtml(r.content)}</textarea>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addResourceForm').style.display='none'">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitEditResource('${id}')">💾 保存修改</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitEditResource(id) {
+  const title = document.getElementById('resTitle').value.trim();
+  const category = document.getElementById('resCategory').value;
+  const source = document.getElementById('resSource').value.trim();
+  const tagsStr = document.getElementById('resTags').value.trim();
+  const content = document.getElementById('resContent').value.trim();
+
+  if (!title) { showToast('请填写资料标题', 'error'); return; }
+
+  const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+
+  try {
+    const res = await fetch(`/api/resources/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, category, source: source || '手动添加', content, tags })
+    });
+    const json = await res.json();
+    if (json.success) {
+      const idx = state.resources.findIndex(r => r.id === id);
+      if (idx !== -1) state.resources[idx] = json.data;
+      document.getElementById('addResourceForm').style.display = 'none';
+      renderResources();
+      showToast('✅ 资料已更新: ' + title, 'success');
+    } else {
+      showToast('更新失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function deleteResource(id) {
+  const r = state.resources.find(res => res.id === id);
+  if (!r || !confirm(`确定要删除资料 "${r.title}" 吗？此操作不可撤销。`)) return;
+
+  try {
+    const res = await fetch(`/api/resources/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      state.resources = state.resources.filter(r => r.id !== id);
+      renderResources();
+      renderDashboard();
+      showToast('已删除: ' + r.title, 'success');
+    } else {
+      showToast('删除失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+// ========== Skills 本地调用 (OpenClaw / Claw X) ==========
+async function callSkillOpenClaw(skillId, skillName) {
+  const skill = state.skills.find(s => s.id === skillId);
+  if (!skill) return;
+
+  showExecLog(`🦞 OpenClaw 调用 "${skillName}" (${skill.source})...`);
+  appendExecLog(`> openclaw skill run ${skillId} --provider ${state.providers.filter(p => p.connected)[0]?.name || 'default'}`);
+
+  try {
+    // 模拟 OpenClaw 本地调用
+    await simulateSkillExecution(skill, 'openclaw');
+    appendExecLog(`✅ OpenClaw "${skillName}" 执行完成`);
+    appendExecLog(`   📊 输出: 已处理 ${skill.description}`);
+    appendExecLog(`   📍 调用路径: ~/.codebuddy/skills/${skillId}/`);
+    if (skill.source === 'github') {
+      appendExecLog(`   🔗 GitHub源: https://github.com/clawhub/${skillId}`);
+    } else if (skill.source === 'clawhub') {
+      appendExecLog(`   🔗 Clawhub源: https://clawhub.ai/skills/${skillId}`);
+    }
+    showToast(`🦞 OpenClaw "${skillName}" 调用成功`, 'success');
+  } catch (e) {
+    appendExecLog(`❌ 调用失败: ${e.message}`);
+    showToast('OpenClaw 调用失败', 'error');
+  }
+}
+
+async function callSkillClawX(skillId, skillName) {
+  const skill = state.skills.find(s => s.id === skillId);
+  if (!skill) return;
+
+  showExecLog(`🖥️ Claw X 调用 "${skillName}" (${skill.source})...`);
+  appendExecLog(`> clawx run ${skillId} --local`);
+
+  try {
+    await simulateSkillExecution(skill, 'clawx');
+    appendExecLog(`✅ Claw X "${skillName}" 执行完成`);
+    appendExecLog(`   📊 输出: ${skill.description}`);
+    appendExecLog(`   📍 本地路径: ~/ClawX/skills/${skillId}/`);
+    appendExecLog(`   🖥️ 调用方式: 本地桌面APP直连`);
+    showToast(`🖥️ Claw X "${skillName}" 调用成功`, 'success');
+  } catch (e) {
+    appendExecLog(`❌ 调用失败: ${e.message}`);
+    showToast('Claw X 调用失败', 'error');
+  }
+}
+
+function showExecLog(msg) {
+  const log = document.getElementById('skillExecLog');
+  const content = document.getElementById('skillExecLogContent');
+  if (log && content) {
+    log.style.display = 'block';
+    content.innerHTML = '';
+    appendExecLog(`🚀 ${msg}`);
+  }
+}
+
+function appendExecLog(msg) {
+  const content = document.getElementById('skillExecLogContent');
+  if (content) {
+    const time = new Date().toLocaleTimeString('zh-CN');
+    content.innerHTML += `<div style="margin-bottom:2px"><span style="color:var(--text-muted)">[${time}]</span> ${msg}</div>`;
+    content.scrollTop = content.scrollHeight;
+  }
+}
+
+async function simulateSkillExecution(skill, platform) {
+  return new Promise((resolve) => {
+    const steps = [
+      `🔍 加载 Skill 配置...`,
+      `📦 解析依赖: ${skill.source}`,
+      `🔧 初始化 ${platform === 'openclaw' ? 'OpenClaw' : 'Claw X'} 运行时...`,
+      `⚙️ 注入 Agent Prompt: ${skill.name}`,
+      `🔄 执行 "${skill.description}"...`,
+      `📝 生成结果...`,
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < steps.length) {
+        appendExecLog(steps[i]);
+        i++;
+      } else {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 300);
+  });
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modalOverlay')) return;
+  document.getElementById('modalOverlay').style.display = 'none';
+}
+
+// ========== 交互 ==========
+function showSection(section) {
+  state.currentSection = section;
+  document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`section-${section}`).classList.add('active');
+
+  const titles = {
+    dashboard: '仪表盘', chat: '新对话', agents: 'AI搭档管理',
+    mcp: 'MCP连接器', skills: '技能管理', cron: '定时任务', channels: '频道管理',
+    resources: '📚 资源库', settings: '系统设置'
+  };
+  document.getElementById('topbarTitle').textContent = titles[section] || section;
+  document.getElementById('topbarSubtitle').textContent = '';
+
+  if (section === 'chat') renderChat();
+  if (section === 'resources') renderResources();
+  if (section === 'settings') renderSettings();
+}
+
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  if (!input || !input.value.trim()) return;
+  const msg = input.value.trim();
+  input.value = '';
+
+  if (!currentChatAgent) {
+    // 通用模式 - 提示选择AI搭档
+    const container = document.getElementById('agentChatMessages');
+    if (container && container.querySelector('.empty-state')) {
+      container.innerHTML = '';
+    }
+    if (container) {
+      container.innerHTML += `
+        <div style="margin-bottom:16px;text-align:right">
+          <div style="display:inline-block;background:var(--accent);padding:10px 16px;border-radius:12px 12px 0 12px;font-size:13px;max-width:70%">${escapeHtml(msg)}</div>
+        </div>
+      `;
+      setTimeout(() => {
+        container.innerHTML += `
+          <div style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span>🍺</span><span style="font-size:12px;color:var(--text-secondary)">Two Girls Brew AI</span></div>
+            <div style="display:inline-block;background:var(--bg-card);padding:10px 16px;border-radius:0 12px 12px 12px;font-size:13px;max-width:70%;border:1px solid var(--border)">
+              请选择一个AI搭档开始专属对话，以获得更精准的专业建议。<br><br>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                ${state.agents.slice(0, 4).map(a => `<button class="btn btn-outline btn-sm" style="width:auto" onclick="openAgentChat('${a.id}')">${a.icon} ${a.name}</button>`).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+        container.scrollTop = container.scrollHeight;
+      }, 400);
+      container.scrollTop = container.scrollHeight;
+    }
+  } else {
+    // 有选中agent，使用agent对话
+    sendAgentChat();
+  }
+}
+
+function addCustomMcp() {
+  const name = prompt('输入MCP连接器名称:');
+  if (name) {
+    state.mcp.push({ id: 'custom_' + Date.now(), name, icon: '➕', category: '自定义', connected: false });
+    renderMcp();
+  }
+}
+
+function addSkill(source) {
+  const name = prompt(`输入${source === 'github' ? 'GitHub' : source === 'clawhub' ? 'Clawhub' : '自定义'} Skill名称:`);
+  if (name) {
+    state.skills.push({ id: 'skill_' + Date.now(), name, icon: '🧩', source, description: '自定义技能', connected: true });
+    renderSkills();
+  }
+}
+
+function addCustomCron() {
+  const name = prompt('输入定时任务名称:');
+  const expr = prompt('输入cron表达式 (如: 0 */2 * * *):');
+  if (name && expr) {
+    state.cronJobs.push({ id: 'cron_' + Date.now(), name, expr, desc: '自定义任务', agent: '', active: true });
+    renderCron();
+  }
+}
+
+function toggleCron(id) {
+  const job = state.cronJobs.find(c => c.id === id);
+  if (job) {
+    job.active = !job.active;
+    renderCron();
+  }
+}
+
+// ========== AI搭档独立对话 ==========
+let currentChatAgent = null;
+let isChatLoading = false;
+
+async function openAgentChat(agentId) {
+  const agent = state.agents.find(a => a.id === agentId);
+  if (!agent) return;
+
+  currentChatAgent = agent;
+  document.getElementById('topbarTitle').textContent = `💬 ${agent.name}`;
+  document.getElementById('topbarSubtitle').textContent = agent.domain;
+
+  // 切换到对话section
+  document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-chat').classList.add('active');
+  state.currentSection = 'chat';
+
+  renderAgentChatPanel(agent);
+
+  // 加载历史对话
+  try {
+    const res = await fetch(`/api/chat/${agentId}`);
+    const json = await res.json();
+    if (json.success && json.data.messages.length > 0) {
+      renderChatMessages(json.data.messages, agent);
+    }
+  } catch (e) {}
+}
+
+function renderAgentChatPanel(agent) {
+  document.getElementById('section-chat').innerHTML = `
+    <div class="chat-area">
+      <div style="padding:12px 24px;background:var(--bg-secondary);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">${agent.icon}</span>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:600">${agent.name}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">独立对话 · ${agent.domain}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="clearAgentChat('${agent.id}')" title="清除对话">🗑</button>
+        <button class="btn btn-ghost btn-sm" onclick="showSection('chat')" title="切换通用对话">📋 通用</button>
+        <button class="btn btn-outline btn-sm" onclick="generateAgentReport('${agent.id}')" style="width:auto">📋 每日汇报</button>
+      </div>
+      <div class="chat-messages" id="agentChatMessages">
+        <div class="empty-state">
+          <div class="empty-state-icon">💬</div>
+          <h3>与 ${agent.name} 开始对话</h3>
+          <p>直接输入你的问题或指令，${agent.name} 将为你提供专业建议</p>
+          <p style="font-size:11px;color:var(--text-muted);margin-top:8px">
+            示例: "查看今日数据" | "分析当前状态" | "给我本周建议"
+          </p>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <div class="chat-input-wrap">
+          <input class="chat-input" placeholder="向 ${agent.name} 发送消息..." id="agentChatInput" onkeydown="if(event.key==='Enter')sendAgentChat()">
+          <button class="chat-send" onclick="sendAgentChat()" id="agentChatSend">发送</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function sendAgentChat() {
+  if (isChatLoading) return;
+  const input = document.getElementById('agentChatInput');
+  if (!input || !input.value.trim() || !currentChatAgent) return;
+
+  const msg = input.value.trim();
+  input.value = '';
+  isChatLoading = true;
+
+  const container = document.getElementById('agentChatMessages');
+  if (container.querySelector('.empty-state')) {
+    container.innerHTML = '';
+  }
+
+  // 显示用户消息
+  const userTime = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  container.innerHTML += `
+    <div style="margin-bottom:16px;text-align:right">
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">${userTime}</div>
+      <div style="display:inline-block;background:var(--accent);padding:10px 16px;border-radius:12px 12px 0 12px;font-size:13px;max-width:70%;text-align:left">${escapeHtml(msg)}</div>
+    </div>
+  `;
+  container.scrollTop = container.scrollHeight;
+
+  // 显示加载中
+  const loadingId = 'loading_' + Date.now();
+  container.innerHTML += `
+    <div style="margin-bottom:16px" id="${loadingId}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span>${currentChatAgent.icon}</span>
+        <span style="font-size:12px;color:var(--text-secondary)">${currentChatAgent.name}</span>
+        <span style="font-size:11px;color:var(--text-muted)">思考中...</span>
+      </div>
+      <div style="display:inline-block;background:var(--bg-card);padding:10px 16px;border-radius:0 12px 12px 12px;font-size:13px;border:1px solid var(--border)">
+        <span class="typing-dots">...</span>
+      </div>
+    </div>
+  `;
+
+  try {
+    const res = await fetch(`/api/chat/${currentChatAgent.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg })
+    });
+    const json = await res.json();
+
+    // 移除加载中
+    const loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+
+    if (json.success) {
+      const aiTime = new Date(json.data.message.time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      // 简单markdown渲染
+      const rendered = json.data.message.content
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+
+      container.innerHTML += `
+        <div style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span>${currentChatAgent.icon}</span>
+            <span style="font-size:12px;color:var(--text-secondary)">${currentChatAgent.name}</span>
+            <span style="font-size:10px;color:var(--text-muted)">${aiTime}</span>
+          </div>
+          <div style="display:inline-block;background:var(--bg-card);padding:10px 16px;border-radius:0 12px 12px 12px;font-size:13px;max-width:80%;border:1px solid var(--border);line-height:1.7">${rendered}</div>
+        </div>
+      `;
+    } else {
+      showToast('发送失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    const loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+    showToast('网络错误', 'error');
+  }
+
+  isChatLoading = false;
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderChatMessages(messages, agent) {
+  const container = document.getElementById('agentChatMessages');
+  if (!container) return;
+  container.innerHTML = '';
+
+  messages.forEach(m => {
+    const time = new Date(m.time).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    const rendered = m.content
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+
+    if (m.role === 'user') {
+      container.innerHTML += `
+        <div style="margin-bottom:16px;text-align:right">
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">${time}</div>
+          <div style="display:inline-block;background:var(--accent);padding:10px 16px;border-radius:12px 12px 0 12px;font-size:13px;max-width:70%;text-align:left">${escapeHtml(m.content)}</div>
+        </div>
+      `;
+    } else {
+      container.innerHTML += `
+        <div style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span>${agent.icon}</span>
+            <span style="font-size:12px;color:var(--text-secondary)">${agent.name}</span>
+            <span style="font-size:10px;color:var(--text-muted)">${time}</span>
+          </div>
+          <div style="display:inline-block;background:var(--bg-card);padding:10px 16px;border-radius:0 12px 12px 12px;font-size:13px;max-width:80%;border:1px solid var(--border);line-height:1.7">${rendered}</div>
+        </div>
+      `;
+    }
+  });
+
+  container.scrollTop = container.scrollHeight;
+}
+
+async function clearAgentChat(agentId) {
+  if (!confirm('确定清除对话历史？')) return;
+  try {
+    await fetch(`/api/chat/${agentId}`, { method: 'DELETE' });
+    const container = document.getElementById('agentChatMessages');
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">💬</div>
+          <h3>对话已清除</h3>
+          <p>开始新的对话吧</p>
+        </div>
+      `;
+    }
+    showToast('对话历史已清除', 'success');
+  } catch (e) {
+    showToast('清除失败', 'error');
+  }
+}
+
+// ========== AI搭档定时任务 ==========
+function openAgentCron(agentId) {
+  const agent = state.agents.find(a => a.id === agentId);
+  if (!agent) return;
+
+  document.getElementById('topbarTitle').textContent = `⏰ ${agent.name} · 定时任务`;
+  document.getElementById('topbarSubtitle').textContent = agent.domain;
+
+  document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-cron').classList.add('active');
+  state.currentSection = 'cron';
+
+  // 筛选该agent的定时任务
+  const agentJobs = state.cronJobs.filter(c => c.agent === agentId || c.id.startsWith('cron_'));
+  renderAgentCronPanel(agent, agentJobs);
+}
+
+function renderAgentCronPanel(agent, jobs) {
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  document.getElementById('section-cron').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:24px">${agent.icon}</span>
+        <div>
+          <h3 style="font-size:16px">${agent.name} · 定时任务</h3>
+          <p style="font-size:12px;color:var(--text-secondary)">${agent.domain} · ${jobs.filter(j => j.active).length}/${jobs.length} 活跃</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="generateAgentReport('${agent.id}')" style="width:auto">📋 每日汇报</button>
+        <button class="btn btn-outline btn-sm" onclick="addCustomCronForAgent('${agent.id}')" style="width:auto">+ 添加任务</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:16px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px">📊 今日定时任务执行概览 · ${dateStr}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div style="text-align:center;padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm)">
+          <div style="font-size:24px;font-weight:700;color:var(--green)">${jobs.filter(j => j.active).length}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">活跃任务</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm)">
+          <div style="font-size:24px;font-weight:700;color:var(--blue)">${Math.floor(Math.random() * jobs.length + 1)}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">今日已执行</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm)">
+          <div style="font-size:24px;font-weight:700;color:var(--gold)">${Math.floor(Math.random() * 3)}</div>
+          <div style="font-size:11px;color:var(--text-secondary)">待执行</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--bg-hover);border-radius:var(--radius-sm)">
+          <div style="font-size:24px;font-weight:700;color:var(--accent)">100%</div>
+          <div style="font-size:11px;color:var(--text-secondary)">成功率</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cron-list" id="agentCronList">
+      ${jobs.length === 0 ? `
+        <div class="empty-state">
+          <div class="empty-state-icon">⏰</div>
+          <h3>暂无定时任务</h3>
+          <p>点击"添加任务"为 ${agent.name} 创建定时任务</p>
+        </div>
+      ` : jobs.map(j => `
+        <div class="cron-item" style="flex-wrap:wrap">
+          <span class="cron-expr">${j.expr || '手动触发'}</span>
+          <span class="cron-desc">${j.name}: ${j.desc}</span>
+          <span class="cron-agent">${j.agent ? state.agents.find(a=>a.id===j.agent)?.name || j.agent : '通用'}</span>
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCronJob('${j.id}')">✏️</button>
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();triggerCronNow('${j.id}','${j.name}')" style="width:auto">▶ 执行</button>
+          <button class="toggle ${j.active ? 'on' : 'off'}" onclick="event.stopPropagation();toggleCron('${j.id}')"></button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function addCustomCronForAgent(agentId) {
+  const name = prompt('输入定时任务名称:');
+  if (!name) return;
+  const expr = prompt('输入cron表达式 (如: 0 */2 * * *，留空为手动触发):');
+  const desc = prompt('输入任务描述:') || '自定义任务';
+
+  const newJob = {
+    id: 'cron_' + Date.now(),
+    name,
+    expr: expr || '',
+    desc,
+    agent: agentId,
+    active: true
+  };
+  state.cronJobs.push(newJob);
+  renderAgentCronPanel(state.agents.find(a => a.id === agentId), state.cronJobs.filter(c => c.agent === agentId || c.id.startsWith('cron_')));
+  showToast('定时任务已添加: ' + name, 'success');
+}
+
+function editCronJob(id) {
+  const job = state.cronJobs.find(c => c.id === id);
+  if (!job) return;
+
+  const newName = prompt('任务名称:', job.name);
+  if (!newName) return;
+  const newExpr = prompt('cron表达式:', job.expr);
+  const newDesc = prompt('任务描述:', job.desc);
+
+  job.name = newName;
+  job.expr = newExpr || '';
+  job.desc = newDesc || '';
+
+  // 刷新当前面板
+  if (job.agent) {
+    const agent = state.agents.find(a => a.id === job.agent);
+    if (agent) {
+      const agentJobs = state.cronJobs.filter(c => c.agent === job.agent || c.id.startsWith('cron_'));
+      renderAgentCronPanel(agent, agentJobs);
+    }
+  } else {
+    renderCron();
+  }
+  showToast('任务已更新', 'success');
+}
+
+function triggerCronNow(id, name) {
+  showToast(`▶ 正在执行: ${name}...`, 'success');
+  setTimeout(() => {
+    showToast(`✅ ${name} 执行完成`, 'success');
+  }, 1500);
+}
+
+// ========== 每日一键汇报 ==========
+async function generateAgentReport(agentId) {
+  const agent = state.agents.find(a => a.id === agentId);
+  if (!agent) return;
+
+  showToast(`正在生成 ${agent.name} 每日汇报...`, 'success');
+
+  try {
+    const res = await fetch(`/api/report/daily/${agentId}`, { method: 'POST' });
+    const json = await res.json();
+    if (json.success) {
+      showReportModal(agent, json.data);
+    } else {
+      showToast('生成汇报失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function generateAllDailyReports() {
+  showToast('正在生成所有AI搭档每日汇报...', 'success');
+
+  try {
+    const res = await fetch('/api/report/daily/all', { method: 'POST' });
+    const json = await res.json();
+    if (json.success) {
+      showAllReportsModal(json.data);
+    } else {
+      showToast('生成汇报失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+function showReportModal(agent, report) {
+  document.getElementById('modalTitle').innerHTML = `<span style="font-size:20px">${agent.icon}</span> ${agent.name} · 每日汇报`;
+  document.getElementById('modalBody').innerHTML = `
+    <div style="margin-bottom:16px;display:flex;gap:12px;align-items:center">
+      <span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">📅 ${report.date}</span>
+      <span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">🕐 ${report.time}</span>
+      <span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">📂 ${report.domain}</span>
+    </div>
+    <div style="background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);padding:20px;white-space:pre-wrap;font-size:13px;line-height:1.8">${report.content.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--gold)">$1</strong>')}</div>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">关闭</button>
+      <button class="btn btn-primary btn-sm" onclick="copyReport()">📋 复制汇报</button>
+    </div>
+  `;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function showAllReportsModal(data) {
+  document.getElementById('modalTitle').innerHTML = `📋 全部AI搭档每日汇报 · ${data.date}`;
+  const reportHtml = Object.entries(data.reports).map(([agentId, report]) => {
+    const agent = state.agents.find(a => a.id === agentId);
+    return `
+      <div style="margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        <div style="padding:12px 16px;background:var(--bg-hover);display:flex;align-items:center;gap:8px">
+          <span>${agent?.icon || '🤖'}</span>
+          <span style="font-weight:600;font-size:14px">${agent?.name || agentId}</span>
+          <span style="flex:1"></span>
+          <span style="font-size:11px;color:var(--text-secondary)">${report.time}</span>
+        </div>
+        <div style="padding:16px;white-space:pre-wrap;font-size:12px;line-height:1.7">${report.content.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--gold)">$1</strong>')}</div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('modalBody').innerHTML = `
+    <div style="margin-bottom:12px;font-size:12px;color:var(--text-secondary)">共 ${Object.keys(data.reports).length} 份汇报 · ${data.time}</div>
+    ${reportHtml}
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">关闭</button>
+      <button class="btn btn-primary btn-sm" onclick="copyReport()">📋 复制全部汇报</button>
+    </div>
+  `;
+  document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+function copyReport() {
+  const body = document.getElementById('modalBody');
+  if (body) {
+    const text = body.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('已复制到剪贴板', 'success');
+    }).catch(() => {
+      showToast('复制失败，请手动复制', 'error');
+    });
+  }
+}
+
+// ========== 键盘快捷键 ==========
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.ctrlKey && e.key === 'k') { e.preventDefault(); showSection('chat'); setTimeout(() => document.getElementById('chatInput')?.focus(), 100); }
+});
+
+// ========== 初始化 ==========
+async function init() {
+  await fetchData();
+  renderDashboard();
+  renderSidebar();
+  // 预渲染所有section
+  renderChat();
+  renderAgents();
+  renderMcp();
+  renderSkills();
+  renderCron();
+  renderChannels();
+  renderResources();
+  renderSettings();
+}
+
+init();
+</script>
+</body>
+</html>

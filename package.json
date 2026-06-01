@@ -1,0 +1,109 @@
+{
+  "name": "two-girls-brew",
+  "version": "3.1.0",
+  "description": "Two Girls Brew (两女孩精酿) AI搭档后台管理系统 - macOS桌面应用",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "server": "node src/server.js",
+    "dev": "node src/server.js",
+    "dashboard": "node src/index.js --dashboard",
+    "scheduler": "node src/index.js --scheduler",
+    "electron": "electron .",
+    "electron:dev": "NODE_ENV=development electron .",
+    "build:mac": "electron-builder --mac",
+    "build:mac:arm64": "electron-builder --mac --arm64",
+    "build:mac:x64": "electron-builder --mac --x64",
+    "dist": "npm run build:mac",
+    "pipeline:daily": "node src/index.js --pipeline dailyOps",
+    "pipeline:online": "node src/index.js --pipeline onlineToOffline",
+    "pipeline:event": "node src/index.js --pipeline eventFullCycle",
+    "pipeline:product": "node src/index.js --pipeline newProductLaunch",
+    "command:sales": "node src/index.js \"查看今日销售报表\"",
+    "command:marketing": "node src/index.js \"发起小红书营销活动\"",
+    "command:inventory": "node src/index.js \"检查库存状态\"",
+    "command:reviews": "node src/index.js \"处理最新评价\""
+  },
+  "build": {
+    "appId": "com.twogirlsbrew.ai-dashboard",
+    "productName": "Two Girls Brew AI",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "public/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/agents/layers",
+        "to": "agents/layers"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "icon": "electron/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "electron/entitlements.mac.plist",
+      "entitlementsInherit": "electron/entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "Two Girls Brew AI 搭档",
+      "background": "electron/dmg-background.png",
+      "iconSize": 100,
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "electron/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "electron/icon.png"
+    }
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "two-girls-brew",
+    "craft-beer",
+    "agent-matrix",
+    "youzan",
+    "openclaw",
+    "automation",
+    "multi-agent",
+    "electron",
+    "macos"
+  ],
+  "author": "Two Girls Brew Engineering Team",
+  "license": "MIT"
+}
