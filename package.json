@@ -64,7 +64,6 @@
     },
     "dmg": {
       "title": "Two Girls Brew AI 搭档",
-      "background": "electron/dmg-background.png",
       "iconSize": 100,
       "contents": [
         { "x": 130, "y": 220 },
