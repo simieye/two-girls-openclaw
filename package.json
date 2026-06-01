@@ -1,6 +1,6 @@
 {
   "name": "two-girls-brew",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Two Girls Brew (两女孩精酿) AI搭档后台管理系统 - macOS桌面应用",
   "main": "electron/main.js",
   "scripts": {

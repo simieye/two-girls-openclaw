@@ -617,7 +617,7 @@ body {
       <div class="sidebar-logo">🍺</div>
       <div class="sidebar-brand">
         <h2>Two Girls Brew</h2>
-        <span>AI搭档后台 v3.0</span>
+        <span>AI搭档后台 v3.3</span>
       </div>
     </div>
     <div class="sidebar-actions">
@@ -763,7 +763,8 @@ const state = {
   currentSection: 'dashboard',
   providerModels: [], // 添加表单中的模型标签暂存
   resourceFilter: 'all', // 资源库分类筛选
-  resourceSearch: '' // 资源库搜索
+  resourceSearch: '', // 资源库搜索
+  resourceTab: 'text' // 资源添加表单tab切换
 };
 
 const LAYERS = ['identity', 'memory', 'soul', 'user', 'agent', 'tools'];
@@ -889,17 +890,22 @@ function renderAgents() {
   document.getElementById('section-agents').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h3>🤖 AI搭档管理 (${state.agents.length})</h3>
-      <button class="btn btn-primary btn-sm" onclick="generateAllDailyReports()" style="width:auto">📋 一键全部汇报</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="showAddAgentForm()">+ 自定义添加AI搭档</button>
+        <button class="btn btn-outline btn-sm" onclick="generateAllDailyReports()">📋 一键全部汇报</button>
+      </div>
     </div>
+    <div id="addAgentFormContainer" style="display:none;margin-bottom:16px"></div>
     <div class="agent-grid">
       ${state.agents.map(a => `
         <div class="agent-card">
           <span class="agent-card-badge badge-p${a.priority > 2 ? '2' : a.priority > 1 ? '1' : '0'}">P${a.priority}</span>
+          ${a.custom ? `<span style="position:absolute;top:8px;right:8px;font-size:10px;background:var(--accent);color:#fff;padding:2px 6px;border-radius:4px">自定义</span>` : ''}
           <div class="agent-card-header" onclick="openAgentDetail('${a.id}')">
             <div class="agent-card-icon" style="background:${a.color}20">${a.icon}</div>
             <div>
               <div class="agent-card-name">${a.name}</div>
-              <div class="agent-card-domain">${a.domain} · ${a.layers.length}层</div>
+              <div class="agent-card-domain">${a.domain} · ${a.layers ? a.layers.length : 6}层</div>
             </div>
           </div>
           <div class="layer-tabs">
@@ -910,31 +916,271 @@ function renderAgents() {
             <button class="btn btn-outline btn-sm" style="flex:1" onclick="event.stopPropagation();openAgentCron('${a.id}')">⏰ 任务</button>
             <button class="btn btn-primary btn-sm" style="flex:1" onclick="event.stopPropagation();generateAgentReport('${a.id}')">📋 汇报</button>
           </div>
+          ${a.custom ? `<div style="margin-top:6px;text-align:right"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteCustomAgent('${a.id}')" style="color:var(--red);width:auto">🗑 删除</button></div>` : ''}
         </div>
       `).join('')}
     </div>
   `;
 }
 
+// ========== 自定义添加AI搭档表单 ==========
+function showAddAgentForm() {
+  const container = document.getElementById('addAgentFormContainer');
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="provider-form-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h4>🤖 自定义添加AI搭档</h4>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addAgentFormContainer').style.display='none'" style="width:auto">取消</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">创建专属AI智能体，支持6层prompt配置和独立对话</p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">搭档名称 *</label>
+          <input class="form-input" id="agentName" placeholder="如: 品牌营销顾问">
+        </div>
+        <div class="form-field">
+          <label class="form-label">图标 Emoji</label>
+          <input class="form-input" id="agentIcon" placeholder="如: 🎯" maxlength="2" value="🤖">
+        </div>
+        <div class="form-field">
+          <label class="form-label">领域</label>
+          <input class="form-input" id="agentDomain" placeholder="如: marketing">
+        </div>
+        <div class="form-field">
+          <label class="form-label">优先级 (1-5)</label>
+          <select class="form-input" id="agentPriority">
+            <option value="1">P1 - 最高</option>
+            <option value="2">P2 - 高</option>
+            <option value="3" selected>P3 - 中</option>
+            <option value="4">P4 - 低</option>
+            <option value="5">P5 - 最低</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">主题色</label>
+          <input class="form-input" type="color" id="agentColor" value="#E91E63" style="height:36px;padding:4px">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">描述</label>
+          <textarea class="form-input" id="agentDesc" rows="2" placeholder="描述这个AI搭档的职责和能力..."></textarea>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">身份层Prompt (identity) - 定义角色身份</label>
+          <textarea class="form-input" id="agentIdentity" rows="3" placeholder="你是一个专业的..."></textarea>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">记忆层Prompt (memory) - 关键记忆</label>
+          <textarea class="form-input" id="agentMemory" rows="2" placeholder="记住以下关键信息..."></textarea>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">工具层Prompt (tools) - 可用工具</label>
+          <textarea class="form-input" id="agentTools" rows="2" placeholder="你可以使用以下工具..."></textarea>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addAgentFormContainer').style.display='none'">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitAddAgent()">✅ 创建AI搭档</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitAddAgent() {
+  const name = document.getElementById('agentName').value.trim();
+  if (!name) { showToast('请输入搭档名称', 'error'); return; }
+  
+  const data = {
+    name,
+    icon: document.getElementById('agentIcon').value.trim() || '🤖',
+    domain: document.getElementById('agentDomain').value.trim() || 'custom',
+    description: document.getElementById('agentDesc').value.trim(),
+    priority: parseInt(document.getElementById('agentPriority').value),
+    color: document.getElementById('agentColor').value,
+    identityPrompt: document.getElementById('agentIdentity').value.trim(),
+    memoryPrompt: document.getElementById('agentMemory').value.trim(),
+    toolsPrompt: document.getElementById('agentTools').value.trim()
+  };
+  
+  try {
+    const res = await fetch('/api/custom-agents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      document.getElementById('addAgentFormContainer').style.display = 'none';
+      await fetchData();
+      renderAgents();
+      renderDashboard();
+      renderSidebar();
+      showToast('✅ AI搭档已创建: ' + name, 'success');
+    } else {
+      showToast('创建失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function deleteCustomAgent(id) {
+  const agent = state.agents.find(a => a.id === id);
+  if (!agent || !confirm(`确定要删除自定义AI搭档 "${agent.name}" 吗？此操作不可撤销。`)) return;
+  
+  try {
+    const res = await fetch(`/api/custom-agents/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await fetchData();
+      renderAgents();
+      renderDashboard();
+      renderSidebar();
+      showToast('已删除: ' + agent.name, 'success');
+    } else {
+      showToast('删除失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
 function renderMcp() {
   document.getElementById('section-mcp').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h3>🔌 MCP多社媒平台连接器 (${state.mcp.length})</h3>
-      <button class="btn btn-outline btn-sm" onclick="addCustomMcp()">+ 自定义添加MCP</button>
+      <button class="btn btn-primary btn-sm" onclick="showAddMcpForm()">+ 自定义添加MCP</button>
     </div>
+    <div id="addMcpFormContainer" style="display:none;margin-bottom:16px"></div>
     <div class="mcp-grid">
       ${state.mcp.map(m => `
         <div class="mcp-card">
           <span class="mcp-icon">${m.icon}</span>
           <div class="mcp-info">
-            <div class="mcp-name">${m.name}</div>
-            <div class="mcp-category">${m.category}</div>
+            <div class="mcp-name">${m.name} ${m.id.startsWith('custom_') ? '<span style="font-size:10px;color:var(--accent)">自定义</span>' : ''}</div>
+            <div class="mcp-category">${m.category}${m.description ? ' · ' + m.description : ''}${m.endpoint ? ' · ' + m.endpoint : ''}</div>
           </div>
-          <span class="channel-status ${m.connected ? 'status-connected' : 'status-disconnected'}">${m.connected ? '已连接' : '未连接'}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="channel-status ${m.connected ? 'status-connected' : 'status-disconnected'}">${m.connected ? '已连接' : '未连接'}</span>
+            ${m.id.startsWith('custom_') ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteCustomMcp('${m.id}')" style="color:var(--red);width:auto;font-size:16px">🗑</button>` : ''}
+          </div>
         </div>
       `).join('')}
     </div>
   `;
+}
+
+function showAddMcpForm() {
+  const container = document.getElementById('addMcpFormContainer');
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="provider-form-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h4>🔌 自定义添加MCP连接器</h4>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addMcpFormContainer').style.display='none'" style="width:auto">取消</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">添加自定义MCP（Model Context Protocol）连接器，扩展AI能力</p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">连接器名称 *</label>
+          <input class="form-input" id="mcpName" placeholder="如: Notion MCP">
+        </div>
+        <div class="form-field">
+          <label class="form-label">图标 Emoji</label>
+          <input class="form-input" id="mcpIcon" placeholder="如: 📝" maxlength="2" value="🔌">
+        </div>
+        <div class="form-field">
+          <label class="form-label">分类</label>
+          <select class="form-input" id="mcpCategory">
+            <option value="社媒">社媒</option>
+            <option value="电商">电商</option>
+            <option value="协作">协作</option>
+            <option value="开发">开发</option>
+            <option value="AI">AI</option>
+            <option value="数据库">数据库</option>
+            <option value="文件存储">文件存储</option>
+            <option value="自定义">自定义</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">API端点</label>
+          <input class="form-input" id="mcpEndpoint" placeholder="如: https://api.notion.com/mcp">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">描述</label>
+          <textarea class="form-input" id="mcpDesc" rows="2" placeholder="描述此MCP连接器的功能..."></textarea>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">配置 (JSON)</label>
+          <textarea class="form-input" id="mcpConfig" rows="3" placeholder='{"apiKey":"","webhook":""}' style="font-family:monospace;font-size:12px"></textarea>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addMcpFormContainer').style.display='none'">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitAddMcp()">✅ 添加MCP连接器</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitAddMcp() {
+  const name = document.getElementById('mcpName').value.trim();
+  if (!name) { showToast('请输入连接器名称', 'error'); return; }
+  
+  let config = {};
+  try {
+    const configStr = document.getElementById('mcpConfig').value.trim();
+    if (configStr) config = JSON.parse(configStr);
+  } catch (e) { showToast('配置JSON格式错误', 'error'); return; }
+  
+  const data = {
+    name,
+    icon: document.getElementById('mcpIcon').value.trim() || '🔌',
+    category: document.getElementById('mcpCategory').value,
+    description: document.getElementById('mcpDesc').value.trim(),
+    endpoint: document.getElementById('mcpEndpoint').value.trim(),
+    config
+  };
+  
+  try {
+    const res = await fetch('/api/mcp/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      document.getElementById('addMcpFormContainer').style.display = 'none';
+      await fetchData();
+      renderMcp();
+      renderDashboard();
+      showToast('✅ MCP连接器已添加: ' + name, 'success');
+    } else {
+      showToast('添加失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function deleteCustomMcp(id) {
+  const mcp = state.mcp.find(m => m.id === id);
+  if (!mcp || !confirm(`确定要删除MCP连接器 "${mcp.name}" 吗？`)) return;
+  
+  try {
+    const res = await fetch(`/api/mcp/custom/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await fetchData();
+      renderMcp();
+      renderDashboard();
+      showToast('已删除: ' + mcp.name, 'success');
+    } else {
+      showToast('删除失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
 }
 
 function renderSkills() {
@@ -942,23 +1188,25 @@ function renderSkills() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h3>🧩 探索技能 (${state.skills.length})</h3>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-outline btn-sm" onclick="addSkill('github')">+ GitHub Skill</button>
-        <button class="btn btn-outline btn-sm" onclick="addSkill('clawhub')">+ Clawhub Skill</button>
-        <button class="btn btn-outline btn-sm" onclick="addSkill('custom')">+ 自定义添加</button>
+        <button class="btn btn-primary btn-sm" onclick="showAddSkillForm()">+ 自定义添加Skill</button>
+        <button class="btn btn-outline btn-sm" onclick="showAddSkillForm('github')">+ GitHub Skill</button>
+        <button class="btn btn-outline btn-sm" onclick="showAddSkillForm('clawhub')">+ Clawhub Skill</button>
       </div>
     </div>
+    <div id="addSkillFormContainer" style="display:none;margin-bottom:16px"></div>
     <div class="skill-list">
       ${state.skills.map(s => `
         <div class="skill-item" style="flex-wrap:wrap">
           <span class="skill-icon">${s.icon}</span>
           <div class="skill-info">
-            <div class="skill-name">${s.name}</div>
-            <div class="skill-desc">${s.description}</div>
+            <div class="skill-name">${s.name} ${s.id.startsWith('skill_custom_') ? '<span style="font-size:10px;color:var(--accent)">自定义</span>' : ''}</div>
+            <div class="skill-desc">${s.description}${s.category ? ' · ' + s.category : ''}</div>
           </div>
           <span class="skill-source ${s.source}">${s.source === 'builtin' ? '内置' : s.source === 'github' ? 'GitHub' : s.source === 'clawhub' ? 'Clawhub' : '自定义'}</span>
           <div class="skill-actions">
             <button class="skill-call-btn" onclick="callSkillOpenClaw('${s.id}','${s.name}')" title="OpenClaw调用">🦞 OpenClaw</button>
             <button class="skill-call-btn" onclick="callSkillClawX('${s.id}','${s.name}')" title="Claw X调用">🖥️ Claw X</button>
+            ${s.id.startsWith('skill_custom_') ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteCustomSkill('${s.id}')" style="color:var(--red);width:auto;font-size:12px">🗑</button>` : ''}
           </div>
         </div>
       `).join('')}
@@ -973,23 +1221,269 @@ function renderSkills() {
   `;
 }
 
+function showAddSkillForm(sourceType) {
+  const source = sourceType || 'custom';
+  const container = document.getElementById('addSkillFormContainer');
+  container.style.display = 'block';
+  const sourceLabels = { github: 'GitHub', clawhub: 'Clawhub', custom: '自定义' };
+  container.innerHTML = `
+    <div class="provider-form-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h4>🧩 添加${sourceLabels[source] || '自定义'} Skill</h4>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addSkillFormContainer').style.display='none'" style="width:auto">取消</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">
+        ${source === 'github' ? '从GitHub仓库导入Skill' : source === 'clawhub' ? '从Clawhub技能市场导入Skill' : '创建自定义技能扩展，支持OpenClaw和Claw X调用'}
+      </p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">Skill名称 *</label>
+          <input class="form-input" id="skillName" placeholder="如: 自动翻译 Skill">
+        </div>
+        <div class="form-field">
+          <label class="form-label">图标 Emoji</label>
+          <input class="form-input" id="skillIcon" placeholder="如: 🌐" maxlength="2" value="🧩">
+        </div>
+        <div class="form-field">
+          <label class="form-label">来源</label>
+          <select class="form-input" id="skillSource" onchange="toggleSkillSourceFields(this.value)">
+            <option value="custom" ${source === 'custom' ? 'selected' : ''}>自定义</option>
+            <option value="github" ${source === 'github' ? 'selected' : ''}>GitHub</option>
+            <option value="clawhub" ${source === 'clawhub' ? 'selected' : ''}>Clawhub</option>
+            <option value="builtin" ${source === 'builtin' ? 'selected' : ''}>内置</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">分类</label>
+          <input class="form-input" id="skillCategory" placeholder="如: 内容创作">
+        </div>
+        <div class="form-field" id="skillGithubField" ${source === 'github' ? '' : 'style="display:none"'}>
+          <label class="form-label">GitHub仓库URL</label>
+          <input class="form-input" id="skillGithubUrl" placeholder="https://github.com/user/repo">
+        </div>
+        <div class="form-field" id="skillClawhubField" ${source === 'clawhub' ? '' : 'style="display:none"'}>
+          <label class="form-label">Clawhub URL</label>
+          <input class="form-input" id="skillClawhubUrl" placeholder="https://clawhub.ai/skills/skill-id">
+        </div>
+        <div class="form-field" id="skillOpenclawField">
+          <label class="form-label">OpenClaw路径</label>
+          <input class="form-input" id="skillOpenclawPath" placeholder="如: ~/.codebuddy/skills/my-skill/">
+        </div>
+        <div class="form-field full">
+          <label class="form-label">描述</label>
+          <textarea class="form-input" id="skillDesc" rows="2" placeholder="描述此Skill的功能..."></textarea>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">Prompt模板 (可选)</label>
+          <textarea class="form-input" id="skillPrompt" rows="3" placeholder="自定义Skill的prompt模板..." style="font-family:monospace;font-size:12px"></textarea>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addSkillFormContainer').style.display='none'">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitAddSkill()">✅ 添加Skill</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleSkillSourceFields(source) {
+  document.getElementById('skillGithubField').style.display = source === 'github' ? '' : 'none';
+  document.getElementById('skillClawhubField').style.display = source === 'clawhub' ? '' : 'none';
+}
+
+async function submitAddSkill() {
+  const name = document.getElementById('skillName').value.trim();
+  if (!name) { showToast('请输入Skill名称', 'error'); return; }
+  
+  const data = {
+    name,
+    icon: document.getElementById('skillIcon').value.trim() || '🧩',
+    source: document.getElementById('skillSource').value,
+    description: document.getElementById('skillDesc').value.trim(),
+    category: document.getElementById('skillCategory').value.trim(),
+    openclawPath: document.getElementById('skillOpenclawPath')?.value.trim() || '',
+    githubUrl: document.getElementById('skillGithubUrl')?.value.trim() || '',
+    clawhubUrl: document.getElementById('skillClawhubUrl')?.value.trim() || '',
+    promptTemplate: document.getElementById('skillPrompt').value.trim()
+  };
+  
+  try {
+    const res = await fetch('/api/skills/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      document.getElementById('addSkillFormContainer').style.display = 'none';
+      await fetchData();
+      renderSkills();
+      renderDashboard();
+      showToast('✅ Skill已添加: ' + name, 'success');
+    } else {
+      showToast('添加失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function deleteCustomSkill(id) {
+  const skill = state.skills.find(s => s.id === id);
+  if (!skill || !confirm(`确定要删除Skill "${skill.name}" 吗？`)) return;
+  
+  try {
+    const res = await fetch(`/api/skills/custom/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await fetchData();
+      renderSkills();
+      renderDashboard();
+      showToast('已删除: ' + skill.name, 'success');
+    } else {
+      showToast('删除失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
 function renderCron() {
   document.getElementById('section-cron').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h3>⏰ 定时任务 (${state.cronJobs.filter(c=>c.active).length}/${state.cronJobs.length} 运行中)</h3>
-      <button class="btn btn-outline btn-sm" onclick="addCustomCron()">+ 自定义添加</button>
+      <button class="btn btn-primary btn-sm" onclick="showAddCronForm()">+ 自定义添加定时任务</button>
     </div>
+    <div id="addCronFormContainer" style="display:none;margin-bottom:16px"></div>
     <div class="cron-list">
       ${state.cronJobs.map(c => `
         <div class="cron-item">
           <span class="cron-expr">${c.expr || '自定义'}</span>
-          <span class="cron-desc">${c.name}: ${c.desc}</span>
+          <span class="cron-desc">${c.name}: ${c.desc} ${c.category ? '<span style="font-size:10px;color:var(--accent)">[' + c.category + ']</span>' : ''}</span>
           <span class="cron-agent">${c.agent || ''}</span>
           <button class="toggle ${c.active ? 'on' : 'off'} cron-toggle" onclick="toggleCron('${c.id}')"></button>
+          ${c.id.startsWith('cron_custom_') ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteCustomCron('${c.id}')" style="color:var(--red);width:auto;margin-left:4px;font-size:14px">🗑</button>` : ''}
         </div>
       `).join('')}
     </div>
+    <div style="margin-top:16px;padding:16px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border)">
+      <h4 style="margin-bottom:8px;font-size:13px">📖 Cron表达式参考</h4>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11px;color:var(--text-secondary)">
+        <div><code style="color:var(--accent)">*/5 * * * *</code> 每5分钟</div>
+        <div><code style="color:var(--accent)">0 */2 * * *</code> 每2小时</div>
+        <div><code style="color:var(--accent)">0 9 * * *</code> 每天9点</div>
+        <div><code style="color:var(--accent)">0 10 * * 1</code> 每周一10点</div>
+        <div><code style="color:var(--accent)">0 10 1 * *</code> 每月1号10点</div>
+        <div><code style="color:var(--accent)">0 10 15 * *</code> 每月15号10点</div>
+      </div>
+    </div>
   `;
+}
+
+function showAddCronForm() {
+  const container = document.getElementById('addCronFormContainer');
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="provider-form-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h4>⏰ 自定义添加定时任务</h4>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addCronFormContainer').style.display='none'" style="width:auto">取消</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">创建定时自动化任务，绑定AI搭档自动执行</p>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">任务名称 *</label>
+          <input class="form-input" id="cronName" placeholder="如: 每日自动对账">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Cron表达式 *</label>
+          <input class="form-input" id="cronExpr" placeholder="如: 0 9 * * *">
+        </div>
+        <div class="form-field">
+          <label class="form-label">绑定AI搭档</label>
+          <select class="form-input" id="cronAgent">
+            <option value="">不绑定</option>
+            ${state.agents.map(a => `<option value="${a.id}">${a.icon} ${a.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">分类</label>
+          <select class="form-input" id="cronCategory">
+            <option value="数据监控">数据监控</option>
+            <option value="报表生成">报表生成</option>
+            <option value="内容发布">内容发布</option>
+            <option value="系统维护">系统维护</option>
+            <option value="通知提醒">通知提醒</option>
+            <option value="自定义">自定义</option>
+          </select>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">任务描述</label>
+          <textarea class="form-input" id="cronDesc" rows="2" placeholder="描述此定时任务的功能..."></textarea>
+        </div>
+        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addCronFormContainer').style.display='none'">取消</button>
+          <button class="btn btn-primary btn-sm" onclick="submitAddCron()">✅ 添加定时任务</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitAddCron() {
+  const name = document.getElementById('cronName').value.trim();
+  const expr = document.getElementById('cronExpr').value.trim();
+  if (!name) { showToast('请输入任务名称', 'error'); return; }
+  if (!expr) { showToast('请输入Cron表达式', 'error'); return; }
+  
+  const data = {
+    name,
+    expr,
+    desc: document.getElementById('cronDesc').value.trim(),
+    agent: document.getElementById('cronAgent').value,
+    category: document.getElementById('cronCategory').value,
+    active: true
+  };
+  
+  try {
+    const res = await fetch('/api/cron/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      document.getElementById('addCronFormContainer').style.display = 'none';
+      await fetchData();
+      renderCron();
+      renderDashboard();
+      showToast('✅ 定时任务已添加: ' + name, 'success');
+    } else {
+      showToast('添加失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
+}
+
+async function deleteCustomCron(id) {
+  const cron = state.cronJobs.find(c => c.id === id);
+  if (!cron || !confirm(`确定要删除定时任务 "${cron.name}" 吗？`)) return;
+  
+  try {
+    const res = await fetch(`/api/cron/custom/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (json.success) {
+      await fetchData();
+      renderCron();
+      renderDashboard();
+      showToast('已删除: ' + cron.name, 'success');
+    } else {
+      showToast('删除失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
 }
 
 function renderChannels() {
@@ -1813,7 +2307,7 @@ function renderAbout() {
     <div class="settings-section">
       <div class="settings-section-title">🍺 Two Girls Brew AI 搭档系统</div>
       <div style="font-size:13px;color:var(--text-secondary);line-height:2">
-        <p>版本: <strong style="color:var(--text-primary)">v3.0.0</strong></p>
+        <p>版本: <strong style="color:var(--text-primary)">v3.3.0</strong></p>
         <p>架构: 9智能体 × 6层 = 54知识模块</p>
         <p>智能体: ${state.agents.map(a => a.name).join(', ')}</p>
         <p>频道: 飞书 | 微信 | 门店小程序 | 有赞微商城 | 公众号 | 自定义MCP</p>
@@ -1899,10 +2393,42 @@ async function loadLayerInModal(agentId, layer) {
   content.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px">加载中...</div>';
 
   try {
+    // 先尝试从prompts API获取
+    const promptRes = await fetch(`/api/prompts/${agentId}`);
+    const promptJson = await promptRes.json();
+    
+    if (promptJson.success && promptJson.data.layers && promptJson.data.layers[layer]) {
+      const text = promptJson.data.layers[layer]
+        .replace(/^### (.+)$/gm, '<h4 style="color:var(--gold);margin:16px 0 8px;font-size:14px">$1</h4>')
+        .replace(/^## (.+)$/gm, '<h3 style="color:var(--accent);margin:20px 0 10px;font-size:16px">$1</h3>')
+        .replace(/^# (.+)$/gm, '<h2 style="color:var(--accent);margin:24px 0 12px;font-size:18px">$1</h2>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text-primary)">$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code style="background:var(--bg-hover);padding:2px 6px;border-radius:4px;font-size:12px">$1</code>')
+        .replace(/^- (.+)$/gm, '<li style="margin-left:16px;color:var(--text-secondary)">$1</li>')
+        .replace(/^\|(.+)\|$/gm, (match) => {
+          if (match.includes('---')) return '';
+          const cells = match.split('|').filter(c => c.trim());
+          const isHeader = cells.some(c => c.includes('---'));
+          const tag = isHeader ? 'th' : 'td';
+          return '<tr>' + cells.map(c => `<${tag} style="padding:6px 12px;border:1px solid var(--border);font-size:12px;text-align:left">${c.trim()}</${tag}>`).join('') + '</tr>';
+        })
+        .replace(/(<tr>.*<\/tr>\n?)+/g, (match) => `<table style="width:100%;border-collapse:collapse;margin:12px 0">${match}</table>`)
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/```yaml\n?([\s\S]*?)```/g, '<pre style="background:var(--bg-input);padding:16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:var(--text-secondary)">$1</pre>')
+        .replace(/```json\n?([\s\S]*?)```/g, '<pre style="background:var(--bg-input);padding:16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:var(--text-secondary)">$1</pre>')
+        .replace(/```\n?([\s\S]*?)```/g, '<pre style="background:var(--bg-input);padding:16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;color:var(--text-secondary)">$1</pre>')
+        .replace(/> (.+)$/gm, '<blockquote style="border-left:3px solid var(--accent);padding:8px 16px;margin:12px 0;color:var(--gold);background:var(--bg-hover);border-radius:0 8px 8px 0">$1</blockquote>')
+        .replace(/---/g, '<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">');
+
+      content.innerHTML = `<div style="line-height:1.8;font-size:13px">${text || '<span style="color:var(--text-muted)">此层暂无内容，可在设置中编辑</span>'}</div>`;
+      return;
+    }
+
+    // 回退到agents API
     const res = await fetch(`/api/agents/${agentId}/${layer}`);
     const json = await res.json();
     if (json.success) {
-      // 简单markdown渲染
       const text = json.data.content
         .replace(/^### (.+)$/gm, '<h4 style="color:var(--gold);margin:16px 0 8px;font-size:14px">$1</h4>')
         .replace(/^## (.+)$/gm, '<h3 style="color:var(--accent);margin:20px 0 10px;font-size:16px">$1</h3>')
@@ -2049,24 +2575,125 @@ function openResourceDetail(id) {
   const cat = state.resourceCategories.find(c => c.id === r.category);
   const catName = cat ? cat.name : r.category;
   const date = new Date(r.updatedAt).toLocaleString('zh-CN');
+  const hasFile = r.filePath || r.fileType;
 
-  document.getElementById('modalTitle').innerHTML = `📄 ${escapeHtml(r.title)} <span style="font-size:12px;color:var(--text-secondary)">· ${catName}</span>`;
+  document.getElementById('modalTitle').innerHTML = `${hasFile ? '📎' : '📄'} ${escapeHtml(r.title)} <span style="font-size:12px;color:var(--text-secondary)">· ${catName}</span>`;
   document.getElementById('modalBody').innerHTML = `
     <div class="resource-detail-header">
       <span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">📂 ${catName}</span>
       <span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">📅 ${date}</span>
       <span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">📎 ${escapeHtml(r.source)}</span>
+      ${hasFile ? `<span style="font-size:11px;background:var(--bg-hover);padding:4px 10px;border-radius:6px">${r.fileType || ''} ${r.fileSize ? formatFileSize(r.fileSize) : ''}</span>` : ''}
       <span style="flex:1"></span>
       <div class="resource-tags" style="margin-top:0">${r.tags.map(t => `<span class="resource-tag">#${t}</span>`).join('')}</div>
     </div>
+    ${hasFile ? `
+      <div style="padding:12px;background:var(--bg-hover);border-radius:8px;margin-bottom:12px;font-size:12px;color:var(--text-secondary)">
+        📎 附件: ${r.filePath ? r.filePath.split('/').pop() : r.title} · ${r.fileType || '未知类型'}
+      </div>
+    ` : ''}
     <div class="resource-detail-content">${renderMarkdown(r.content)}</div>
-    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="closeModal()">关闭</button>
       <button class="btn btn-outline btn-sm" onclick="editResource('${id}');closeModal()">✏️ 编辑</button>
+      <button class="btn btn-outline btn-sm" onclick="queryStructuredResource('${id}')">🔍 结构化查询</button>
+      <button class="btn btn-outline btn-sm" onclick="sendResourceToAgent('${id}')">🤖 发送给智能体</button>
       <button class="btn btn-primary btn-sm" onclick="copyResourceContent()">📋 复制内容</button>
     </div>
+    <div id="structuredOutputArea" style="display:none;margin-top:12px"></div>
   `;
   document.getElementById('modalOverlay').style.display = 'flex';
+}
+
+// ========== 资源结构化输出 ==========
+async function queryStructuredResource(id) {
+  const r = state.resources.find(res => res.id === id);
+  if (!r) return;
+  
+  const area = document.getElementById('structuredOutputArea');
+  area.style.display = 'block';
+  area.innerHTML = '<div style="font-size:12px;color:var(--text-secondary)">⏳ 正在生成结构化输出...</div>';
+  
+  try {
+    const res = await fetch('/api/resources/structured', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: r.title, format: 'json' })
+    });
+    const json = await res.json();
+    if (json.success) {
+      area.innerHTML = `
+        <div style="border:1px solid var(--accent);border-radius:var(--radius);overflow:hidden">
+          <div style="padding:10px 16px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center">
+            📊 结构化输出
+            <button class="btn btn-ghost btn-sm" onclick="copyStructuredOutput()" style="color:#fff;width:auto">📋 复制JSON</button>
+          </div>
+          <div style="padding:16px;background:var(--bg-input);max-height:300px;overflow-y:auto">
+            <pre id="structuredJsonContent" style="font-family:monospace;font-size:11px;color:var(--green);white-space:pre-wrap;word-break:break-all">${JSON.stringify(json.data, null, 2)}</pre>
+          </div>
+          <div style="padding:8px 16px;background:var(--bg-hover);font-size:11px;color:var(--text-secondary)">
+            📋 匹配 ${json.data.totalMatches} 条记录 · 🕐 ${new Date(json.data.timestamp).toLocaleTimeString('zh-CN')}
+          </div>
+        </div>
+      `;
+    }
+  } catch (e) {
+    area.innerHTML = '<div style="color:var(--red);font-size:12px">结构化输出失败</div>';
+  }
+}
+
+function copyStructuredOutput() {
+  const pre = document.getElementById('structuredJsonContent');
+  if (pre) {
+    navigator.clipboard.writeText(pre.textContent).then(() => showToast('已复制结构化JSON', 'success'));
+  }
+}
+
+// ========== 发送资源给智能体 ==========
+function sendResourceToAgent(id) {
+  const r = state.resources.find(res => res.id === id);
+  if (!r) return;
+  
+  document.getElementById('modalBody').innerHTML += `
+    <div style="margin-top:12px;padding:12px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">🤖 选择智能体接收此资料</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${state.agents.slice(0, 6).map(a => `
+          <button class="btn btn-outline btn-sm" style="width:auto" onclick="sendToSpecificAgent('${a.id}', '${id}')">${a.icon} ${a.name}</button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+async function sendToSpecificAgent(agentId, resourceId) {
+  const agent = state.agents.find(a => a.id === agentId);
+  const r = state.resources.find(res => res.id === resourceId);
+  if (!agent || !r) return;
+  
+  showToast(`📤 正在将 "${r.title}" 发送给 ${agent.name}...`, 'success');
+  
+  // 构建结构化的消息
+  const structuredMsg = `请分析以下资料内容，并给出专业建议：\n\n【资料标题】${r.title}\n【分类】${r.category}\n【来源】${r.source}\n【标签】${r.tags.join(', ')}\n【内容】\n${r.content.substring(0, 2000)}`;
+  
+  try {
+    const res = await fetch(`/api/chat/${agentId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: structuredMsg })
+    });
+    const json = await res.json();
+    if (json.success) {
+      closeModal();
+      showToast(`✅ 资料已发送给 ${agent.name}，AI正在分析中...`, 'success');
+      // 打开agent对话查看结果
+      setTimeout(() => openAgentChat(agentId), 500);
+    } else {
+      showToast('发送失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
 }
 
 function copyResourceContent() {
@@ -2189,38 +2816,214 @@ function showAddResourceForm() {
   form.style.display = 'block';
   form.innerHTML = `
     <div class="provider-form-card">
-      <h4 style="margin-bottom:4px">📝 手动添加资料</h4>
-      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px">添加自定义知识库文档</p>
-      <div class="form-grid">
-        <div class="form-field">
-          <label class="form-label">资料标题 *</label>
-          <input class="form-input" id="resTitle" placeholder="如: 新品上线流程">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h4>📝 添加资料</h4>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm ${state.resourceTab === 'text' ? '' : ''}" onclick="switchResourceTab('text')" style="width:auto">📝 文本资料</button>
+          <button class="btn btn-outline btn-sm ${state.resourceTab === 'file' ? '' : ''}" onclick="switchResourceTab('file')" style="width:auto">📎 上传文件</button>
         </div>
-        <div class="form-field">
-          <label class="form-label">分类 *</label>
-          <select class="form-input" id="resCategory">
-            ${state.resourceCategories.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
-          </select>
+      </div>
+      <div id="resourceTextForm" style="display:${state.resourceTab === 'file' ? 'none' : 'block'}">
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label">资料标题 *</label>
+            <input class="form-input" id="resTitle" placeholder="如: 新品上线流程">
+          </div>
+          <div class="form-field">
+            <label class="form-label">分类 *</label>
+            <select class="form-input" id="resCategory">
+              ${state.resourceCategories.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">来源</label>
+            <input class="form-input" id="resSource" placeholder="如: 运营团队">
+          </div>
+          <div class="form-field">
+            <label class="form-label">标签 (逗号分隔)</label>
+            <input class="form-input" id="resTags" placeholder="如: SOP,门店,运营">
+          </div>
+          <div class="form-field full">
+            <label class="form-label">内容 (支持Markdown) *</label>
+            <textarea class="form-input" id="resContent" rows="8" placeholder="输入资料内容..." style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
+          </div>
+          <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addResourceForm').style.display='none'">取消</button>
+            <button class="btn btn-primary btn-sm" onclick="submitResource()">✅ 添加文本资料</button>
+          </div>
         </div>
-        <div class="form-field">
-          <label class="form-label">来源</label>
-          <input class="form-input" id="resSource" placeholder="如: 运营团队">
-        </div>
-        <div class="form-field">
-          <label class="form-label">标签 (逗号分隔)</label>
-          <input class="form-input" id="resTags" placeholder="如: SOP,门店,运营">
-        </div>
-        <div class="form-field full">
-          <label class="form-label">内容 (支持Markdown) *</label>
-          <textarea class="form-input" id="resContent" rows="8" placeholder="输入资料内容..." style="font-family:monospace;font-size:12px;resize:vertical"></textarea>
-        </div>
-        <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addResourceForm').style.display='none'">取消</button>
-          <button class="btn btn-primary btn-sm" onclick="submitResource()">✅ 添加资料</button>
+      </div>
+      <div id="resourceFileForm" style="display:${state.resourceTab === 'file' ? 'block' : 'none'}">
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">支持图片、视频、PDF、Office文档等文件上传，上传后可供智能体调用</p>
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="form-label">资料标题 *</label>
+            <input class="form-input" id="resFileTitle" placeholder="如: 品牌Logo">
+          </div>
+          <div class="form-field">
+            <label class="form-label">分类 *</label>
+            <select class="form-input" id="resFileCategory">
+              ${state.resourceCategories.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">来源</label>
+            <input class="form-input" id="resFileSource" placeholder="如: 设计团队">
+          </div>
+          <div class="form-field">
+            <label class="form-label">标签 (逗号分隔)</label>
+            <input class="form-input" id="resFileTags" placeholder="如: logo,品牌,设计">
+          </div>
+          <div class="form-field full">
+            <label class="form-label">选择文件</label>
+            <div style="border:2px dashed var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;transition:var(--transition)" 
+                 onclick="document.getElementById('resFileInput').click()"
+                 ondrop="handleFileDrop(event)" ondragover="event.preventDefault()"
+                 id="fileDropZone">
+              <div style="font-size:32px;margin-bottom:8px">📁</div>
+              <div style="font-size:13px;color:var(--text-secondary)">点击选择文件或拖拽文件到此处</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">支持图片、视频、PDF、Office文档</div>
+              <input type="file" id="resFileInput" style="display:none" onchange="handleFileSelect(event)" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
+            </div>
+            <div id="resFilePreview" style="margin-top:8px;display:none"></div>
+          </div>
+          <div class="form-field full">
+            <label class="form-label">文件描述</label>
+            <textarea class="form-input" id="resFileDesc" rows="3" placeholder="描述文件内容和用途..."></textarea>
+          </div>
+          <div class="form-field full" style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('addResourceForm').style.display='none'">取消</button>
+            <button class="btn btn-primary btn-sm" id="uploadFileBtn" onclick="submitFileUpload()" disabled>📤 上传文件</button>
+          </div>
         </div>
       </div>
     </div>
   `;
+}
+
+function switchResourceTab(tab) {
+  state.resourceTab = tab;
+  showAddResourceForm();
+}
+
+// 文件上传处理
+let selectedFile = null;
+let selectedFileBase64 = null;
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  processSelectedFile(file);
+}
+
+function handleFileDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+  processSelectedFile(file);
+}
+
+function processSelectedFile(file) {
+  selectedFile = file;
+  document.getElementById('uploadFileBtn').disabled = false;
+  
+  // 自动填充标题
+  if (!document.getElementById('resFileTitle').value) {
+    document.getElementById('resFileTitle').value = file.name.replace(/\.[^/.]+$/, '');
+  }
+  
+  const preview = document.getElementById('resFilePreview');
+  preview.style.display = 'block';
+  preview.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-hover);border-radius:6px">
+      <span style="font-size:20px">${getFileIcon(file.name)}</span>
+      <div>
+        <div style="font-size:12px;font-weight:600">${file.name}</div>
+        <div style="font-size:10px;color:var(--text-secondary)">${formatFileSize(file.size)}</div>
+      </div>
+    </div>
+  `;
+  
+  // 如果是图片，读取base64用于预览
+  if (file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      selectedFileBase64 = e.target.result.split(',')[1];
+      preview.innerHTML += `<img src="${e.target.result}" style="max-width:200px;max-height:150px;margin-top:8px;border-radius:4px">`;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      selectedFileBase64 = e.target.result.split(',')[1];
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function getFileIcon(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const icons = {
+    jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', webp: '🖼️', svg: '🖼️', bmp: '🖼️',
+    mp4: '🎬', webm: '🎬', mov: '🎬', avi: '🎬',
+    pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', ppt: '📽️', pptx: '📽️',
+    zip: '📦', rar: '📦', '7z': '📦'
+  };
+  return icons[ext] || '📎';
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function submitFileUpload() {
+  if (!selectedFile || !selectedFileBase64) {
+    showToast('请先选择文件', 'error');
+    return;
+  }
+  
+  const title = document.getElementById('resFileTitle').value.trim();
+  if (!title) { showToast('请填写资料标题', 'error'); return; }
+  
+  const tagsStr = document.getElementById('resFileTags').value.trim();
+  const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => t) : [];
+  
+  const data = {
+    filename: selectedFile.name,
+    data: selectedFileBase64,
+    fileType: selectedFile.type,
+    title,
+    category: document.getElementById('resFileCategory').value,
+    source: document.getElementById('resFileSource').value.trim() || '文件上传',
+    description: document.getElementById('resFileDesc').value.trim(),
+    tags
+  };
+  
+  showToast('正在上传文件...', 'success');
+  
+  try {
+    const res = await fetch('/api/resources/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (json.success) {
+      selectedFile = null;
+      selectedFileBase64 = null;
+      document.getElementById('addResourceForm').style.display = 'none';
+      await refreshResources();
+      renderResources();
+      renderDashboard();
+      showToast('✅ 文件已上传: ' + title, 'success');
+    } else {
+      showToast('上传失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    showToast('网络错误', 'error');
+  }
 }
 
 async function submitResource() {
@@ -2356,19 +3159,47 @@ async function callSkillOpenClaw(skillId, skillName) {
   if (!skill) return;
 
   showExecLog(`🦞 OpenClaw 调用 "${skillName}" (${skill.source})...`);
-  appendExecLog(`> openclaw skill run ${skillId} --provider ${state.providers.filter(p => p.connected)[0]?.name || 'default'}`);
+  
+  // 显示真实调用信息
+  const connectedProvider = state.providers.filter(p => p.connected)[0];
+  const providerName = connectedProvider?.name || 'default';
+  appendExecLog(`> openclaw skill run ${skillId} --provider ${providerName}`);
+  
+  if (skill.openclawPath) {
+    appendExecLog(`📍 技能路径: ${skill.openclawPath}`);
+  }
+  if (skill.githubUrl) {
+    appendExecLog(`🔗 GitHub: ${skill.githubUrl}`);
+  }
+  if (skill.clawhubUrl) {
+    appendExecLog(`🔗 Clawhub: ${skill.clawhubUrl}`);
+  }
 
   try {
-    // 模拟 OpenClaw 本地调用
+    // 模拟 OpenClaw 调用流程
     await simulateSkillExecution(skill, 'openclaw');
     appendExecLog(`✅ OpenClaw "${skillName}" 执行完成`);
-    appendExecLog(`   📊 输出: 已处理 ${skill.description}`);
-    appendExecLog(`   📍 调用路径: ~/.codebuddy/skills/${skillId}/`);
+    appendExecLog(`   📊 输出: 已处理 ${skill.description || skill.name}`);
+    appendExecLog(`   📍 调用路径: ${skill.openclawPath || '~/.codebuddy/skills/' + skillId + '/'}`);
     if (skill.source === 'github') {
-      appendExecLog(`   🔗 GitHub源: https://github.com/clawhub/${skillId}`);
+      appendExecLog(`   🔗 GitHub源: ${skill.githubUrl || 'https://github.com/clawhub/' + skillId}`);
     } else if (skill.source === 'clawhub') {
-      appendExecLog(`   🔗 Clawhub源: https://clawhub.ai/skills/${skillId}`);
+      appendExecLog(`   🔗 Clawhub源: ${skill.clawhubUrl || 'https://clawhub.ai/skills/' + skillId}`);
+    } else if (skill.source === 'builtin') {
+      appendExecLog(`   📦 内置Skill: ~/.codebuddy/skills/${skillId}/`);
+    } else if (skill.source === 'custom') {
+      appendExecLog(`   🛠️ 自定义Skill: ${skill.openclawPath || '~/.codebuddy/skills/' + skillId + '/'}`);
     }
+    
+    // 标记按钮状态
+    const buttons = document.querySelectorAll(`.skill-call-btn`);
+    buttons.forEach(btn => {
+      if (btn.textContent.includes('OpenClaw') && btn.onclick && btn.onclick.toString().includes(skillId)) {
+        btn.classList.add('called');
+        setTimeout(() => btn.classList.remove('called'), 2000);
+      }
+    });
+    
     showToast(`🦞 OpenClaw "${skillName}" 调用成功`, 'success');
   } catch (e) {
     appendExecLog(`❌ 调用失败: ${e.message}`);
@@ -2386,8 +3217,8 @@ async function callSkillClawX(skillId, skillName) {
   try {
     await simulateSkillExecution(skill, 'clawx');
     appendExecLog(`✅ Claw X "${skillName}" 执行完成`);
-    appendExecLog(`   📊 输出: ${skill.description}`);
-    appendExecLog(`   📍 本地路径: ~/ClawX/skills/${skillId}/`);
+    appendExecLog(`   📊 输出: ${skill.description || skill.name}`);
+    appendExecLog(`   📍 本地路径: ${skill.openclawPath || '~/ClawX/skills/' + skillId + '/'}`);
     appendExecLog(`   🖥️ 调用方式: 本地桌面APP直连`);
     showToast(`🖥️ Claw X "${skillName}" 调用成功`, 'success');
   } catch (e) {
@@ -2422,7 +3253,7 @@ async function simulateSkillExecution(skill, platform) {
       `📦 解析依赖: ${skill.source}`,
       `🔧 初始化 ${platform === 'openclaw' ? 'OpenClaw' : 'Claw X'} 运行时...`,
       `⚙️ 注入 Agent Prompt: ${skill.name}`,
-      `🔄 执行 "${skill.description}"...`,
+      `🔄 执行 "${skill.description || skill.name}"...`,
       `📝 生成结果...`,
     ];
     let i = 0;
@@ -2458,6 +3289,11 @@ function showSection(section) {
   document.getElementById('topbarSubtitle').textContent = '';
 
   if (section === 'chat') renderChat();
+  if (section === 'agents') renderAgents();
+  if (section === 'mcp') renderMcp();
+  if (section === 'skills') renderSkills();
+  if (section === 'cron') renderCron();
+  if (section === 'channels') renderChannels();
   if (section === 'resources') renderResources();
   if (section === 'settings') renderSettings();
 }
@@ -2502,35 +3338,18 @@ function sendChat() {
   }
 }
 
-function addCustomMcp() {
-  const name = prompt('输入MCP连接器名称:');
-  if (name) {
-    state.mcp.push({ id: 'custom_' + Date.now(), name, icon: '➕', category: '自定义', connected: false });
-    renderMcp();
-  }
-}
-
-function addSkill(source) {
-  const name = prompt(`输入${source === 'github' ? 'GitHub' : source === 'clawhub' ? 'Clawhub' : '自定义'} Skill名称:`);
-  if (name) {
-    state.skills.push({ id: 'skill_' + Date.now(), name, icon: '🧩', source, description: '自定义技能', connected: true });
-    renderSkills();
-  }
-}
-
-function addCustomCron() {
-  const name = prompt('输入定时任务名称:');
-  const expr = prompt('输入cron表达式 (如: 0 */2 * * *):');
-  if (name && expr) {
-    state.cronJobs.push({ id: 'cron_' + Date.now(), name, expr, desc: '自定义任务', agent: '', active: true });
-    renderCron();
-  }
-}
-
 function toggleCron(id) {
   const job = state.cronJobs.find(c => c.id === id);
   if (job) {
     job.active = !job.active;
+    // 如果是自定义cron，同步到后端
+    if (id.startsWith('cron_custom_')) {
+      fetch(`/api/cron/custom/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: job.active })
+      }).catch(() => {});
+    }
     renderCron();
   }
 }
@@ -2812,23 +3631,36 @@ function renderAgentCronPanel(agent, jobs) {
   `;
 }
 
-function addCustomCronForAgent(agentId) {
+async function addCustomCronForAgent(agentId) {
   const name = prompt('输入定时任务名称:');
   if (!name) return;
   const expr = prompt('输入cron表达式 (如: 0 */2 * * *，留空为手动触发):');
   const desc = prompt('输入任务描述:') || '自定义任务';
 
-  const newJob = {
-    id: 'cron_' + Date.now(),
-    name,
-    expr: expr || '',
-    desc,
-    agent: agentId,
-    active: true
-  };
-  state.cronJobs.push(newJob);
-  renderAgentCronPanel(state.agents.find(a => a.id === agentId), state.cronJobs.filter(c => c.agent === agentId || c.id.startsWith('cron_')));
-  showToast('定时任务已添加: ' + name, 'success');
+  try {
+    const res = await fetch('/api/cron/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, expr: expr || '', desc, agent: agentId, category: '智能体任务', active: true })
+    });
+    const json = await res.json();
+    if (json.success) {
+      await fetchData();
+      renderAgentCronPanel(state.agents.find(a => a.id === agentId), state.cronJobs.filter(c => c.agent === agentId));
+      showToast('定时任务已添加: ' + name, 'success');
+    } else {
+      showToast('添加失败: ' + json.error, 'error');
+    }
+  } catch (e) {
+    // 回退到本地
+    const newJob = {
+      id: 'cron_' + Date.now(),
+      name, expr: expr || '', desc, agent: agentId, active: true
+    };
+    state.cronJobs.push(newJob);
+    renderAgentCronPanel(state.agents.find(a => a.id === agentId), state.cronJobs.filter(c => c.agent === agentId));
+    showToast('定时任务已添加: ' + name, 'success');
+  }
 }
 
 function editCronJob(id) {
@@ -2843,6 +3675,15 @@ function editCronJob(id) {
   job.name = newName;
   job.expr = newExpr || '';
   job.desc = newDesc || '';
+
+  // 如果是自定义cron，同步到后端
+  if (id.startsWith('cron_custom_')) {
+    fetch(`/api/cron/custom/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName, expr: newExpr, desc: newDesc })
+    }).catch(() => {});
+  }
 
   // 刷新当前面板
   if (job.agent) {

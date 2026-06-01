@@ -32,6 +32,51 @@ let agentPrompts = {};
 // 内存中的频道设置
 let channelSettings = JSON.parse(JSON.stringify(CHANNELS));
 
+// ========== 持久化数据系统 ==========
+const { getDataDir } = require('./auth');
+
+function getCustomDataDir() {
+  try {
+    return getDataDir();
+  } catch (e) {
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
+    const dataDir = path.join(homeDir, '.two-girls-brew');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    return dataDir;
+  }
+}
+
+function loadCustomData(filename, defaultValue) {
+  try {
+    const filePath = path.join(getCustomDataDir(), filename);
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    }
+  } catch (e) {}
+  return JSON.parse(JSON.stringify(defaultValue));
+}
+
+function saveCustomData(filename, data) {
+  try {
+    const filePath = path.join(getCustomDataDir(), filename);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// 内存中的自定义MCP连接器（带持久化）
+let customMcpConnectors = loadCustomData('mcp_connectors.json', []);
+// 内存中的自定义Skills（带持久化）
+let customSkills = loadCustomData('custom_skills.json', []);
+// 内存中的自定义定时任务（带持久化）
+let customCronJobs = loadCustomData('custom_cron_jobs.json', []);
+// 内存中的自定义AI搭档（带持久化）
+let customAgents = loadCustomData('custom_agents.json', []);
+// agentId counter
+let agentIdCounter = customAgents.length > 0 ? Math.max(...customAgents.map(a => parseInt(a._counter || 0))) + 1 : 1;
+
 // 内存中的对话历史 (agentId -> messages[])
 let chatHistories = {};
 const MAX_CHAT_HISTORY = 100;
@@ -148,34 +193,40 @@ const API_ROUTES = {
   '/api/agents': () => ({ success: true, data: getAgentList() }),
   '/api/agents/all': () => ({ success: true, data: getAllAgentsData() }),
   '/api/channels': () => ({ success: true, data: CHANNELS }),
-  '/api/mcp': () => ({ success: true, data: MCP_CONNECTORS }),
-  '/api/skills': () => ({ success: true, data: SKILLS }),
-  '/api/cron': () => ({ success: true, data: CRON_JOBS }),
+  '/api/mcp': () => ({ success: true, data: [...MCP_CONNECTORS, ...customMcpConnectors] }),
+  '/api/skills': () => ({ success: true, data: [...SKILLS, ...customSkills] }),
+  '/api/cron': () => ({ success: true, data: [...CRON_JOBS, ...customCronJobs] }),
   '/api/providers': () => ({ success: true, data: providers }),
   '/api/resource-categories': () => ({ success: true, data: RESOURCE_CATEGORIES }),
   '/api/resource-templates': () => ({ success: true, data: RESOURCE_TEMPLATES }),
-  '/api/dashboard': () => ({
+  '/api/dashboard': () => {
+    const allMcp = [...MCP_CONNECTORS, ...customMcpConnectors];
+    const allSkills = [...SKILLS, ...customSkills];
+    const allCron = [...CRON_JOBS, ...customCronJobs];
+    const allAgents = [...getAgentList(), ...customAgents.map(a => ({ id: a.id, name: a.name, icon: a.icon, domain: a.domain, priority: a.priority || 3, color: a.color || '#E91E63', layers: LAYERS, custom: true }))];
+    return {
     success: true,
     data: {
-      agents: getAgentList(),
+      agents: allAgents,
       channels: channelSettings,
-      mcp: MCP_CONNECTORS,
-      skills: SKILLS,
-      cronJobs: CRON_JOBS,
+      mcp: allMcp,
+      skills: allSkills,
+      cronJobs: allCron,
       providers,
       resources: resourceLibrary,
       resourceCategories: RESOURCE_CATEGORIES,
       stats: {
-        totalAgents: 9,
+        totalAgents: allAgents.length,
         activeChannels: channelSettings.filter(c => c.connected).length,
-        connectedMcp: MCP_CONNECTORS.filter(m => m.connected).length,
-        activeSkills: SKILLS.length,
-        activeCronJobs: CRON_JOBS.filter(c => c.active).length,
+        connectedMcp: allMcp.filter(m => m.connected).length,
+        activeSkills: allSkills.length,
+        activeCronJobs: allCron.filter(c => c.active).length,
         connectedProviders: providers.filter(p => p.connected).length,
         totalResources: resourceLibrary.length
       }
     }
-  })
+    };
+  }
 };
 
 // 动态API: /api/agents/:id/:layer
@@ -422,6 +473,407 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     
+    // ========== 自定义AI搭档 CRUD ==========
+    // GET /api/custom-agents - 获取自定义AI搭档列表
+    if (pathname === '/api/custom-agents' && req.method === 'GET') {
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, data: customAgents }));
+      return;
+    }
+
+    // POST /api/custom-agents - 添加自定义AI搭档
+    if (pathname === '/api/custom-agents' && req.method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.name) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: '缺少名称' }));
+        return;
+      }
+      const newAgent = {
+        id: 'custom_agent_' + agentIdCounter,
+        _counter: agentIdCounter,
+        name: body.name,
+        icon: body.icon || '🤖',
+        domain: body.domain || 'custom',
+        description: body.description || '',
+        priority: body.priority || 3,
+        color: body.color || '#E91E63',
+        identityPrompt: body.identityPrompt || '',
+        memoryPrompt: body.memoryPrompt || '',
+        soulPrompt: body.soulPrompt || '',
+        userPrompt: body.userPrompt || '',
+        agentPrompt: body.agentPrompt || '',
+        toolsPrompt: body.toolsPrompt || '',
+        createdAt: Date.now()
+      };
+      agentIdCounter++;
+      customAgents.push(newAgent);
+      saveCustomData('custom_agents.json', customAgents);
+      
+      // 初始化prompts和对话历史
+      agentPrompts[newAgent.id] = {
+        identity: newAgent.identityPrompt || `# ${newAgent.name} 身份\n\n自定义AI搭档`,
+        memory: newAgent.memoryPrompt || '',
+        soul: newAgent.soulPrompt || '',
+        user: newAgent.userPrompt || '',
+        agent: newAgent.agentPrompt || '',
+        tools: newAgent.toolsPrompt || ''
+      };
+      chatHistories[newAgent.id] = [];
+      dailyReports[newAgent.id] = null;
+      
+      res.writeHead(201);
+      res.end(JSON.stringify({ success: true, data: newAgent }));
+      return;
+    }
+
+    // DELETE /api/custom-agents/:id - 删除自定义AI搭档
+    const agentDeleteMatch = pathname.match(/^\/api\/custom-agents\/(.+)$/);
+    if (agentDeleteMatch && req.method === 'DELETE') {
+      const agentId = agentDeleteMatch[1];
+      const idx = customAgents.findIndex(a => a.id === agentId);
+      if (idx !== -1) {
+        customAgents.splice(idx, 1);
+        saveCustomData('custom_agents.json', customAgents);
+        delete agentPrompts[agentId];
+        delete chatHistories[agentId];
+        delete dailyReports[agentId];
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: 'Agent not found' }));
+      }
+      return;
+    }
+
+    // ========== 自定义MCP连接器 CRUD ==========
+    // POST /api/mcp/custom - 添加自定义MCP
+    if (pathname === '/api/mcp/custom' && req.method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.name) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: '缺少名称' }));
+        return;
+      }
+      const newMcp = {
+        id: 'custom_mcp_' + Date.now(),
+        name: body.name,
+        icon: body.icon || '🔌',
+        category: body.category || '自定义',
+        description: body.description || '',
+        endpoint: body.endpoint || '',
+        config: body.config || {},
+        connected: false,
+        createdAt: Date.now()
+      };
+      customMcpConnectors.push(newMcp);
+      saveCustomData('mcp_connectors.json', customMcpConnectors);
+      res.writeHead(201);
+      res.end(JSON.stringify({ success: true, data: newMcp }));
+      return;
+    }
+
+    // DELETE /api/mcp/custom/:id - 删除自定义MCP
+    const mcpDeleteMatch = pathname.match(/^\/api\/mcp\/custom\/(.+)$/);
+    if (mcpDeleteMatch && req.method === 'DELETE') {
+      const mcpId = mcpDeleteMatch[1];
+      const idx = customMcpConnectors.findIndex(m => m.id === mcpId);
+      if (idx !== -1) {
+        customMcpConnectors.splice(idx, 1);
+        saveCustomData('mcp_connectors.json', customMcpConnectors);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: 'MCP not found' }));
+      }
+      return;
+    }
+
+    // PUT /api/mcp/custom/:id - 更新自定义MCP
+    if (mcpDeleteMatch && req.method === 'PUT') {
+      const mcpId = mcpDeleteMatch[1];
+      const body = await parseBody(req);
+      const idx = customMcpConnectors.findIndex(m => m.id === mcpId);
+      if (idx !== -1) {
+        customMcpConnectors[idx] = { ...customMcpConnectors[idx], ...body, id: customMcpConnectors[idx].id };
+        saveCustomData('mcp_connectors.json', customMcpConnectors);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, data: customMcpConnectors[idx] }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: 'MCP not found' }));
+      }
+      return;
+    }
+
+    // ========== 自定义Skills CRUD ==========
+    // POST /api/skills/custom - 添加自定义Skill
+    if (pathname === '/api/skills/custom' && req.method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.name) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: '缺少名称' }));
+        return;
+      }
+      const newSkill = {
+        id: 'skill_custom_' + Date.now(),
+        name: body.name,
+        icon: body.icon || '🧩',
+        source: body.source || 'custom',
+        description: body.description || '',
+        category: body.category || '通用',
+        openclawPath: body.openclawPath || '',
+        clawhubUrl: body.clawhubUrl || '',
+        githubUrl: body.githubUrl || '',
+        promptTemplate: body.promptTemplate || '',
+        createdAt: Date.now()
+      };
+      customSkills.push(newSkill);
+      saveCustomData('custom_skills.json', customSkills);
+      res.writeHead(201);
+      res.end(JSON.stringify({ success: true, data: newSkill }));
+      return;
+    }
+
+    // DELETE /api/skills/custom/:id - 删除自定义Skill
+    const skillDeleteMatch = pathname.match(/^\/api\/skills\/custom\/(.+)$/);
+    if (skillDeleteMatch && req.method === 'DELETE') {
+      const skillId = skillDeleteMatch[1];
+      const idx = customSkills.findIndex(s => s.id === skillId);
+      if (idx !== -1) {
+        customSkills.splice(idx, 1);
+        saveCustomData('custom_skills.json', customSkills);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: 'Skill not found' }));
+      }
+      return;
+    }
+
+    // PUT /api/skills/custom/:id - 更新自定义Skill
+    if (skillDeleteMatch && req.method === 'PUT') {
+      const skillId = skillDeleteMatch[1];
+      const body = await parseBody(req);
+      const idx = customSkills.findIndex(s => s.id === skillId);
+      if (idx !== -1) {
+        customSkills[idx] = { ...customSkills[idx], ...body, id: customSkills[idx].id };
+        saveCustomData('custom_skills.json', customSkills);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, data: customSkills[idx] }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: 'Skill not found' }));
+      }
+      return;
+    }
+
+    // ========== 自定义定时任务 CRUD ==========
+    // POST /api/cron/custom - 添加自定义定时任务
+    if (pathname === '/api/cron/custom' && req.method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.name) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: '缺少名称' }));
+        return;
+      }
+      const newCron = {
+        id: 'cron_custom_' + Date.now(),
+        name: body.name,
+        expr: body.expr || '',
+        desc: body.desc || '',
+        agent: body.agent || '',
+        active: body.active !== undefined ? body.active : true,
+        category: body.category || '自定义',
+        createdAt: Date.now()
+      };
+      customCronJobs.push(newCron);
+      saveCustomData('custom_cron_jobs.json', customCronJobs);
+      res.writeHead(201);
+      res.end(JSON.stringify({ success: true, data: newCron }));
+      return;
+    }
+
+    // DELETE /api/cron/custom/:id - 删除自定义定时任务
+    const cronDeleteMatch = pathname.match(/^\/api\/cron\/custom\/(.+)$/);
+    if (cronDeleteMatch && req.method === 'DELETE') {
+      const cronId = cronDeleteMatch[1];
+      const idx = customCronJobs.findIndex(c => c.id === cronId);
+      if (idx !== -1) {
+        customCronJobs.splice(idx, 1);
+        saveCustomData('custom_cron_jobs.json', customCronJobs);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: 'Cron job not found' }));
+      }
+      return;
+    }
+
+    // PUT /api/cron/custom/:id - 更新自定义定时任务
+    if (cronDeleteMatch && req.method === 'PUT') {
+      const cronId = cronDeleteMatch[1];
+      const body = await parseBody(req);
+      const idx = customCronJobs.findIndex(c => c.id === cronId);
+      if (idx !== -1) {
+        customCronJobs[idx] = { ...customCronJobs[idx], ...body, id: customCronJobs[idx].id };
+        saveCustomData('custom_cron_jobs.json', customCronJobs);
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true, data: customCronJobs[idx] }));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: 'Cron job not found' }));
+      }
+      return;
+    }
+
+    // ========== 文件上传 API ==========
+    // POST /api/resources/upload - 上传文件
+    if (pathname === '/api/resources/upload' && req.method === 'POST') {
+      const uploadDir = path.join(getCustomDataDir(), 'uploads');
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+      
+      const contentType = req.headers['content-type'] || '';
+      if (contentType.includes('multipart/form-data')) {
+        // 简单multipart解析
+        const chunks = [];
+        req.on('data', chunk => chunks.push(chunk));
+        req.on('end', () => {
+          const buffer = Buffer.concat(chunks);
+          const boundary = contentType.split('boundary=')[1];
+          if (!boundary) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ success: false, error: 'Invalid multipart data' }));
+            return;
+          }
+          
+          const parts = buffer.toString('binary').split('--' + boundary);
+          const uploadedFiles = [];
+          
+          parts.forEach(part => {
+            if (part.includes('Content-Disposition') && part.includes('filename=')) {
+              const filenameMatch = part.match(/filename="(.+?)"/);
+              const filename = filenameMatch ? filenameMatch[1] : 'file_' + Date.now();
+              const contentStart = part.indexOf('\r\n\r\n');
+              if (contentStart !== -1) {
+                let content = part.substring(contentStart + 4);
+                if (content.endsWith('\r\n')) content = content.substring(0, content.length - 2);
+                const filePath = path.join(uploadDir, Date.now() + '_' + filename);
+                fs.writeFileSync(filePath, Buffer.from(content, 'binary'));
+                uploadedFiles.push({ filename, path: filePath, size: Buffer.from(content, 'binary').length });
+              }
+            }
+          });
+          
+          res.writeHead(200);
+          res.end(JSON.stringify({ success: true, data: { files: uploadedFiles } }));
+        });
+      } else if (contentType.includes('application/json')) {
+        // Base64文件上传
+        const body = await parseBody(req);
+        if (!body.filename || !body.data) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ success: false, error: '缺少filename或data字段' }));
+          return;
+        }
+        const filePath = path.join(uploadDir, Date.now() + '_' + body.filename);
+        const buffer = Buffer.from(body.data, 'base64');
+        fs.writeFileSync(filePath, buffer);
+        
+        // 同时创建资源记录
+        const category = body.category || 'other';
+        const title = body.title || body.filename;
+        const newResource = {
+          id: 'res_' + resourceIdCounter++,
+          category,
+          title,
+          content: body.description || `上传文件: ${body.filename}`,
+          tags: body.tags || [],
+          source: body.source || '文件上传',
+          filePath: filePath,
+          fileType: body.fileType || path.extname(body.filename),
+          fileSize: buffer.length,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+        resourceLibrary.push(newResource);
+        
+        res.writeHead(201);
+        res.end(JSON.stringify({ success: true, data: { resource: newResource, file: { filename: body.filename, path: filePath, size: buffer.length } } }));
+      } else {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: 'Unsupported content type' }));
+      }
+      return;
+    }
+
+    // GET /api/resources/file/:filename - 获取上传的文件
+    const fileDownloadMatch = pathname.match(/^\/api\/resources\/file\/(.+)$/);
+    if (fileDownloadMatch && req.method === 'GET') {
+      const filename = decodeURIComponent(fileDownloadMatch[1]);
+      const uploadDir = path.join(getCustomDataDir(), 'uploads');
+      const filePath = path.join(uploadDir, filename);
+      if (fs.existsSync(filePath)) {
+        const ext = path.extname(filename).toLowerCase();
+        const mimeTypes = {
+          '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif',
+          '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.webm': 'video/webm',
+          '.pdf': 'application/pdf', '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        };
+        res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+        res.end(fs.readFileSync(filePath));
+      } else {
+        res.writeHead(404);
+        res.end(JSON.stringify({ success: false, error: 'File not found' }));
+      }
+      return;
+    }
+
+    // POST /api/resources/structured - 结构化输出API（给智能体调用）
+    if (pathname === '/api/resources/structured' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const { agentId, query, format } = body;
+      // 根据query搜索资源库，返回结构化数据
+      let results = [...resourceLibrary];
+      if (query) {
+        const q = query.toLowerCase();
+        results = results.filter(r =>
+          r.title.toLowerCase().includes(q) ||
+          r.content.toLowerCase().includes(q) ||
+          r.tags.some(t => t.toLowerCase().includes(q))
+        );
+      }
+      // 限制返回数量
+      results = results.slice(0, 20);
+      // 结构化输出
+      const structured = {
+        query,
+        totalMatches: results.length,
+        timestamp: Date.now(),
+        agent: agentId || 'unknown',
+        format: format || 'json',
+        data: results.map(r => ({
+          id: r.id,
+          title: r.title,
+          category: r.category,
+          summary: r.content.substring(0, 300),
+          tags: r.tags,
+          source: r.source,
+          fileType: r.fileType || null,
+          updatedAt: r.updatedAt
+        }))
+      };
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, data: structured }));
+      return;
+    }
+
     // ========== AI搭档Prompt设置 CRUD ==========
     // GET /api/prompts/:agentId - 获取指定智能体的6层prompt
     const promptGetMatch = pathname.match(/^\/api\/prompts\/([a-z-]+)$/);
@@ -560,7 +1012,14 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const { AGENT_META } = require('./agents/layers/index');
-      const meta = AGENT_META[agentId] || {};
+      let meta = AGENT_META[agentId] || {};
+      // 如果是自定义agent，从customAgents中查找
+      if (!meta.name) {
+        const customAgent = customAgents.find(a => a.id === agentId);
+        if (customAgent) {
+          meta = { name: customAgent.name, icon: customAgent.icon, domain: customAgent.domain || 'general', priority: customAgent.priority || 3, color: customAgent.color || '#E91E63' };
+        }
+      }
 
       // 保存用户消息
       const userMsg = { role: 'user', content: body.message, time: Date.now() };
@@ -572,7 +1031,7 @@ const server = http.createServer(async (req, res) => {
       const agentName = meta.name || agentId;
 
       // 根据agent领域生成对应的响应内容
-      const responseContent = generateAgentResponse(agentId, agentName, meta.domain, body.message, identityContent);
+      const responseContent = generateAgentResponse(agentId, agentName, meta.domain || 'general', body.message, identityContent);
 
       const aiMsg = { role: 'assistant', content: responseContent, time: Date.now() };
       chatHistories[agentId].push(aiMsg);
@@ -611,7 +1070,11 @@ const server = http.createServer(async (req, res) => {
 
       const reports = {};
       Object.keys(dailyReports).forEach(agentId => {
-        const meta = AGENT_META[agentId] || {};
+        let meta = AGENT_META[agentId] || {};
+        if (!meta.name) {
+          const customAgent = customAgents.find(a => a.id === agentId);
+          if (customAgent) meta = { name: customAgent.name, icon: customAgent.icon, domain: customAgent.domain || 'general' };
+        }
         reports[agentId] = generateDailyReport(agentId, meta, dateStr, timeStr);
         dailyReports[agentId] = reports[agentId];
       });
@@ -631,7 +1094,11 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const { AGENT_META } = require('./agents/layers/index');
-      const meta = AGENT_META[agentId] || {};
+      let meta = AGENT_META[agentId] || {};
+      if (!meta.name) {
+        const customAgent = customAgents.find(a => a.id === agentId);
+        if (customAgent) meta = { name: customAgent.name, icon: customAgent.icon, domain: customAgent.domain || 'general' };
+      }
       const now = new Date();
       const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
       const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
