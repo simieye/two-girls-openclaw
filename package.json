@@ -1,6 +1,6 @@
 {
   "name": "two-girls-brew",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Two Girls Brew (两女孩精酿) AI搭档后台管理系统 - macOS桌面应用",
   "main": "electron/main.js",
   "scripts": {
@@ -11,9 +11,10 @@
     "scheduler": "node src/index.js --scheduler",
     "electron": "electron .",
     "electron:dev": "NODE_ENV=development electron .",
-    "build:mac": "electron-builder --mac",
-    "build:mac:arm64": "electron-builder --mac --arm64",
-    "build:mac:x64": "electron-builder --mac --x64",
+    "build:mac": "electron-builder --mac && npm run sign:mac",
+    "build:mac:arm64": "electron-builder --mac --arm64 && npm run sign:mac",
+    "build:mac:x64": "electron-builder --mac --x64 && npm run sign:mac",
+    "sign:mac": "bash scripts/sign-adhoc.sh",
     "dist": "npm run build:mac",
     "pipeline:daily": "node src/index.js --pipeline dailyOps",
     "pipeline:online": "node src/index.js --pipeline onlineToOffline",

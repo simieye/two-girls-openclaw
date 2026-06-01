@@ -5,6 +5,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// 支持通过环境变量指定 layers 目录路径（Electron打包后需要）
+const LAYERS_BASE = process.env.LAYERS_PATH || __dirname;
+
 const AGENTS = [
   'traffic-acquisition',
   'store-operation',
@@ -104,7 +107,7 @@ const CRON_JOBS = [
 ];
 
 function readLayerFile(agentId, layer) {
-  const filePath = path.join(__dirname, agentId, `${layer}.md`);
+  const filePath = path.join(LAYERS_BASE, agentId, `${layer}.md`);
   try {
     return fs.readFileSync(filePath, 'utf-8');
   } catch (e) {

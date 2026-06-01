@@ -8,3 +8,4 @@ dist-electron/
 coverage/
 .cache/
 package-lock.json
+data/

@@ -10,18 +10,56 @@ let mainWindow = null;
 let tray = null;
 let serverProcess = null;
 const SERVER_PORT = 3456;
+const isDev = !app.isPackaged;
+
+// 获取关键路径（打包后和开发环境不同）
+function getLayersPath() {
+  if (isDev) {
+    return path.join(__dirname, '..', 'src', 'agents', 'layers');
+  }
+  return path.join(process.resourcesPath, 'agents', 'layers');
+}
+
+function getPublicPath() {
+  if (isDev) {
+    return path.join(__dirname, '..', 'public');
+  }
+  return path.join(process.resourcesPath, 'app.asar', 'public');
+}
+
+function getServerPath() {
+  if (isDev) {
+    return path.join(__dirname, '..', 'src', 'server.js');
+  }
+  return path.join(process.resourcesPath, 'app.asar', 'src', 'server.js');
+}
 
 // 启动后台服务器
 function startServer() {
-  return new Promise((resolve) => {
-    serverProcess = fork(path.join(__dirname, '..', 'src', 'server.js'), [], {
-      env: { ...process.env, PORT: String(SERVER_PORT) },
+  return new Promise((resolve, reject) => {
+    const serverPath = getServerPath();
+    const layersPath = getLayersPath();
+    const publicPath = getPublicPath();
+
+    console.log('[Main] Server path:', serverPath);
+    console.log('[Main] Layers path:', layersPath);
+    console.log('[Main] Public path:', publicPath);
+    console.log('[Main] Is packaged:', app.isPackaged);
+
+    serverProcess = fork(serverPath, [], {
+      env: {
+        ...process.env,
+        PORT: String(SERVER_PORT),
+        LAYERS_PATH: layersPath,
+        PUBLIC_PATH: publicPath
+      },
       silent: true
     });
 
     serverProcess.stdout.on('data', (data) => {
       const msg = data.toString();
-      if (msg.includes('已启动')) {
+      console.log('[Server]', msg.trim());
+      if (msg.includes('后台管理系统已启动') || msg.includes('已启动')) {
         resolve(true);
       }
     });
@@ -32,10 +70,17 @@ function startServer() {
 
     serverProcess.on('error', (err) => {
       console.error('[Server Process Error]', err);
+      reject(err);
+    });
+
+    serverProcess.on('exit', (code) => {
+      if (code !== 0 && code !== null) {
+        console.error(`[Server] Exited with code ${code}`);
+      }
     });
 
     // 超时回退
-    setTimeout(() => resolve(true), 3000);
+    setTimeout(() => resolve(true), 5000);
   });
 }
 
@@ -49,7 +94,8 @@ function createWindow() {
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     },
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#0a0a1a',
@@ -104,7 +150,7 @@ function createTray() {
         dialog.showMessageBox(mainWindow, {
           type: 'info',
           title: '关于 Two Girls Brew',
-          message: 'Two Girls Brew AI 搭档系统 v3.1',
+          message: 'Two Girls Brew AI 搭档系统 v3.2',
           detail: '9智能体 × 6层 = 54知识模块\n全流程自动化运营管理\n\nBuilt with ❤️ for Two Girls Brew\nEst.2012 · 厦门',
           buttons: ['确定']
         });
@@ -193,7 +239,13 @@ app.whenReady().then(async () => {
 
   // 启动后端服务器
   console.log('🍺 启动 Two Girls Brew 后台服务...');
-  await startServer();
+  try {
+    await startServer();
+    console.log('✅ 后台服务启动成功');
+  } catch (err) {
+    console.error('❌ 后台服务启动失败:', err);
+    dialog.showErrorBox('启动失败', `后台服务启动失败: ${err.message}`);
+  }
 
   createWindow();
   createTray();

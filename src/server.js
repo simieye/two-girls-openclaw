@@ -6,8 +6,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { getAllAgentsData, getAgentList, AI_PROVIDERS, CHANNELS, MCP_CONNECTORS, SKILLS, CRON_JOBS, getAgentLayerData, LAYERS } = require('./agents/layers/index');
+const auth = require('./auth');
 
 const PORT = process.env.PORT || 3456;
+const PUBLIC_PATH = process.env.PUBLIC_PATH || path.join(__dirname, '..', 'public');
 
 // MIME types
 const MIME = {
@@ -131,7 +133,8 @@ loadAgentPrompts();
 function writeLayerFile(agentId, layer, content) {
   const fs = require('fs');
   const p = require('path');
-  const filePath = p.join(__dirname, 'agents', 'layers', agentId, `${layer}.md`);
+  const layersBase = process.env.LAYERS_PATH || p.join(__dirname, 'agents', 'layers');
+  const filePath = p.join(layersBase, agentId, `${layer}.md`);
   try {
     fs.writeFileSync(filePath, content, 'utf-8');
     return true;
@@ -302,7 +305,62 @@ const server = http.createServer(async (req, res) => {
   // API路由
   if (pathname.startsWith('/api/')) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    
+
+    // ========== 认证 API ==========
+    // POST /api/auth/register - 用户注册
+    if (pathname === '/api/auth/register' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const result = auth.register(body);
+      res.writeHead(result.success ? 201 : 400);
+      res.end(JSON.stringify(result));
+      return;
+    }
+
+    // POST /api/auth/login - 用户登录
+    if (pathname === '/api/auth/login' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const result = auth.login(body);
+      res.writeHead(result.success ? 200 : 401);
+      res.end(JSON.stringify(result));
+      return;
+    }
+
+    // POST /api/auth/logout - 退出登录
+    if (pathname === '/api/auth/logout' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const token = body.token || req.headers['authorization']?.replace('Bearer ', '');
+      const result = auth.logout(token);
+      res.writeHead(200);
+      res.end(JSON.stringify(result));
+      return;
+    }
+
+    // GET /api/auth/me - 获取当前用户信息
+    if (pathname === '/api/auth/me' && req.method === 'GET') {
+      const token = url.searchParams.get('token') || req.headers['authorization']?.replace('Bearer ', '');
+      const result = auth.getCurrentUser(token);
+      res.writeHead(result.success ? 200 : 401);
+      res.end(JSON.stringify(result));
+      return;
+    }
+
+    // GET /api/auth/roles - 获取所有角色定义
+    if (pathname === '/api/auth/roles' && req.method === 'GET') {
+      const result = auth.getRoles();
+      res.writeHead(200);
+      res.end(JSON.stringify(result));
+      return;
+    }
+
+    // GET /api/auth/users - 获取用户列表（管理员权限）
+    if (pathname === '/api/auth/users' && req.method === 'GET') {
+      const token = url.searchParams.get('token') || req.headers['authorization']?.replace('Bearer ', '');
+      const result = auth.getUsers(token);
+      res.writeHead(result.success ? 200 : 403);
+      res.end(JSON.stringify(result));
+      return;
+    }
+
     // ========== AI提供商 CRUD ==========
     // POST /api/providers - 添加新提供商
     if (pathname === '/api/providers' && req.method === 'POST') {
@@ -776,8 +834,8 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 静态文件服务
-  let filePath = pathname === '/' ? '/dashboard.html' : pathname;
-  filePath = path.join(__dirname, '..', 'public', filePath);
+  let filePath = pathname === '/' ? '/login.html' : pathname;
+  filePath = path.join(PUBLIC_PATH, filePath);
 
   const ext = path.extname(filePath);
   const contentType = MIME[ext] || 'application/octet-stream';
@@ -785,7 +843,7 @@ const server = http.createServer(async (req, res) => {
   fs.readFile(filePath, (err, data) => {
     if (err) {
       // 回退到dashboard.html (SPA)
-      fs.readFile(path.join(__dirname, '..', 'public', 'dashboard.html'), (err2, data2) => {
+      fs.readFile(path.join(PUBLIC_PATH, 'dashboard.html'), (err2, data2) => {
         if (err2) {
           res.writeHead(404);
           res.end('Not Found');
